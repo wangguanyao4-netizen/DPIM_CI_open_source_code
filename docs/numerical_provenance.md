@@ -20,8 +20,9 @@ earlier reference is not the final coverage target approximation.
 The finite-B baseline simulation is preserved as the relevant local functions,
 not the unrelated experiment driver that originally contained them. GF values
 come from the weighted marginal-CDF supremum implementation in the archived
-`calculate_gf.m`; GF result tables are not distributed.
+`calculate_gf.m`; the original designs and GF tables are in `data/publication`.
 
-The repository contains source code only, without numerical data or generated
-figures. A hash verifies file identity, not a
+The repository contains source and numerical data supporting the figures and
+tables, with provenance in `data_sources.json`. Generated figures and raw
+simulation histories are excluded. A hash verifies file identity, not a
 mathematical conclusion or an independent rerun of a numerical experiment.

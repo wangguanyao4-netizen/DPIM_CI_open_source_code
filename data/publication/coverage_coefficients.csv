@@ -1,0 +1,19 @@
+B,method,coefficient,value,integration_error,polynomial
+399,percentile bootstrap,A0,-0.3840867782286437,4.652538725550549e-14,-z*(z**2 + 3)/4
+399,percentile bootstrap,A4,-0.08277147654403276,9.021596764391764e-15,-z*(z**2 + 5)/24
+399,percentile bootstrap,A33,-0.0423734061814138,1.3514622101375617e-14,-z*(z**4 + 2*z**2 - 9)/72
+399,bootstrap-t,A0,0.0,0.0,0
+399,bootstrap-t,A4,-0.32454556924560374,4.7867205742984813e-14,-z*(2*z**2 + 1)/6
+399,bootstrap-t,A33,0.48681835386840555,7.180135505474616e-14,z*(2*z**2 + 1)/4
+399,t distribution,A0,0.0,0.0,closed_form_student_critical
+399,t distribution,A4,0.016064883839651926,0.0,closed_form_student_critical
+399,t distribution,A33,-0.24742498180740968,0.0,closed_form_student_critical
+999,percentile bootstrap,A0,-0.38871960205855005,1.3178055668286502e-12,-z*(z**2 + 3)/4
+999,percentile bootstrap,A4,-0.08374301305741452,2.988987493209824e-13,-z*(z**2 + 5)/24
+999,percentile bootstrap,A33,-0.042617015342526834,3.391534951447372e-15,-z*(z**4 + 2*z**2 - 9)/72
+999,bootstrap-t,A0,0.0,0.0,0
+999,bootstrap-t,A4,-0.32872867560150537,9.706193994134706e-13,-z*(2*z**2 + 1)/6
+999,bootstrap-t,A33,0.493093013402258,1.4559286200777505e-12,z*(2*z**2 + 1)/4
+999,t distribution,A0,0.0,0.0,closed_form_student_critical
+999,t distribution,A4,0.016064883839651926,0.0,closed_form_student_critical
+999,t distribution,A33,-0.24742498180740968,0.0,closed_form_student_critical

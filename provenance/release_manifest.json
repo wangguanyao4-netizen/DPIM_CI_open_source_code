@@ -1,10 +1,10 @@
 {
   "title": "The probabilistic error estimation of Direct Probability Integral Method for stochastic mechanics",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "license": "MIT",
-  "release_scope": "Source code only; no numerical data or generated figures",
+  "release_scope": "Source and numerical data supporting the manuscript; no manuscript or rendered figures",
   "new_numerical_runs": 0,
-  "timestamp_utc": "2026-10-13T02:04:26.787719+00:00",
+  "timestamp_utc": "2026-10-13T07:18:03.583554+00:00",
   "files": [
     {
       "path": ".gitattributes",
@@ -13,8 +13,8 @@
     },
     {
       "path": ".github/workflows/static-checks.yml",
-      "bytes": 395,
-      "sha256": "623385ef1dbeca765568807c6ee9f5f9dd1638ecbf5db82e1ddb753615ee16e9"
+      "bytes": 510,
+      "sha256": "1699e04d5eb99edcbb1f0ce2e0714177d255f1f5916f52ae2aa59b59214987ce"
     },
     {
       "path": ".gitignore",
@@ -23,33 +23,153 @@
     },
     {
       "path": "CITATION.cff",
-      "bytes": 365,
-      "sha256": "7ceba1280954eae5d28be260aa0a02a129d8dd94d9d01ae926b9ec42b1bace58"
+      "bytes": 373,
+      "sha256": "a523cb868c8b831222a826623072710ed4bbfec5a0f03bf028fc67067c7d2111"
     },
     {
       "path": "config/matlab_source_manifest.json",
-      "bytes": 1747,
-      "sha256": "0c76d8fe83b1e43d226fc3c00de29e316680d407d497f9686a4862c55d2a97f0"
+      "bytes": 1816,
+      "sha256": "57628c8bfd471c78c13227081503f64f6437bde1ddc0a106ddab6c3975b2ef5d"
+    },
+    {
+      "path": "data/publication/coverage.csv",
+      "bytes": 104657,
+      "sha256": "0a8bbb88336311df1ee4e802140ef0175cfea078c311ad7c46b9079dccc3e6ba"
+    },
+    {
+      "path": "data/publication/coverage_coefficients.csv",
+      "bytes": 1422,
+      "sha256": "e9b34d7c9a22f3139cafce7f4110c16a5a308d49db9cc9eaee810bc2805f5960"
+    },
+    {
+      "path": "data/publication/coverage_summary.csv",
+      "bytes": 3955,
+      "sha256": "ec2b318878f04618cf883011cf49c1652620e8123e8b81f30fdd7d2ff9661e0f"
+    },
+    {
+      "path": "data/publication/euler_pool_control.csv",
+      "bytes": 31740,
+      "sha256": "20ad225c5336252fa2beabdeb45346ebc7286b0350eb86471cea8f725f1e572e"
+    },
+    {
+      "path": "data/publication/finite_B_summary.csv",
+      "bytes": 684,
+      "sha256": "e890c11e049b61766a2e49f2ba2a609cf36c1ce6fecaa46259ce3f061952e7bc"
+    },
+    {
+      "path": "data/publication/finite_B_summary_paper_signed_difference.csv",
+      "bytes": 412,
+      "sha256": "cce35b48dabf6ef2d528a4bc7b7e232cfce574c0b9217ca8d74f6d5c35efcca0"
+    },
+    {
+      "path": "data/publication/gf_by_dimension.csv",
+      "bytes": 1910,
+      "sha256": "6d957e1e0e3e7589a643885a903d75018778d97eb6911b577e5382c9a2821714"
+    },
+    {
+      "path": "data/publication/gf_summary.csv",
+      "bytes": 261,
+      "sha256": "7c5486a9db70afcf76af90d1b8c93cd16d63f3f108c263cc6a86fcf1d962208f"
+    },
+    {
+      "path": "data/publication/initial_design_linear.csv",
+      "bytes": 83759,
+      "sha256": "16418cf115b24c29bad5efc451f857f72e0215907a77001db95a9a535652c346"
+    },
+    {
+      "path": "data/publication/initial_design_nonlinear.csv",
+      "bytes": 83726,
+      "sha256": "7dfac34f4a6636081d081ada870bb8b049897ff3972c0149d6ca260272bb4f24"
+    },
+    {
+      "path": "data/publication/initial_design_plate.csv",
+      "bytes": 41006,
+      "sha256": "88cc50bdf860f8f216aa9adbf3a54084ea880179c3fc9e5fb8fd1798c9632411"
+    },
+    {
+      "path": "data/publication/internal_n.csv",
+      "bytes": 259705,
+      "sha256": "8e51ab08f97962b02ddb68f6f4cf9399e53dc463841e53a311800db16f1b5cd1"
+    },
+    {
+      "path": "data/publication/intervals_linear_nonlinear.csv",
+      "bytes": 337749,
+      "sha256": "f30f51bd86185245bec21f3d03ae319e1e81550155e8bd9bcde751b98fec1287"
+    },
+    {
+      "path": "data/publication/intervals_plate.csv",
+      "bytes": 174417,
+      "sha256": "ab1416ce02f52aadf0286f9ec3e5cd94c111d2917a1d468b5bb658e432efc687"
+    },
+    {
+      "path": "data/publication/outer_workflow_curves.csv",
+      "bytes": 1052302,
+      "sha256": "f907a7c7d221a92c05340d7462877ca9a3db8b2c26035a219798276bcc5397bb"
+    },
+    {
+      "path": "data/publication/README.md",
+      "bytes": 2784,
+      "sha256": "ac240ce7ffa299c15a87f71edfed23435de6536923664dad7a61d7f7f26dff3f"
+    },
+    {
+      "path": "data/publication/recommended_R.csv",
+      "bytes": 1190,
+      "sha256": "c7ca3b68d3058bea8bc3a2c722f142ba5fd58f22c863f0f7e1f068b73846fe56"
+    },
+    {
+      "path": "data/publication/reference_linear.csv",
+      "bytes": 6731,
+      "sha256": "2845929078ad6a237e73c844359579e0db528b45f5291765def53b607216e5c2"
+    },
+    {
+      "path": "data/publication/reference_nonlinear_coverage.csv",
+      "bytes": 1710,
+      "sha256": "47338f207ceb4322984c62357d7bd285c8b84f1cc1cf155a78da5498a4c27f06"
+    },
+    {
+      "path": "data/publication/reference_nonlinear_density.csv",
+      "bytes": 13303,
+      "sha256": "21426ee0dfd0ca946436219046be15e044e690695ea547cf5043c23df400e945"
+    },
+    {
+      "path": "data/publication/reference_nonlinear_n_density.csv",
+      "bytes": 5805,
+      "sha256": "5550918cbfbcd87515df72873f21dc7e87dc4b308d91de6103c4ea83df4151cd"
+    },
+    {
+      "path": "data/publication/reference_plate.csv",
+      "bytes": 12478,
+      "sha256": "7cdf4ec3ec3a53c165076241c57e9f04e8c6ba1d7bea77b4dd93fe9b4c9bc438"
+    },
+    {
+      "path": "data/publication/saved_trial_intervals.csv",
+      "bytes": 60382,
+      "sha256": "830d1c23f0fa8a16162bd58d0a2330447083e131bc8323a45bdfce96e7fbe6a4"
+    },
+    {
+      "path": "data/publication/table_interval_values.csv",
+      "bytes": 16905,
+      "sha256": "57b256e68ad2405b62d5a74e1f9e6627e91cf112b34b6c9d65fd51564df2221b"
     },
     {
       "path": "docs/figures.md",
-      "bytes": 12305,
-      "sha256": "8de1e63fe5781c900a04240a935ac5fa04d6117af030e4288a0aef7bdf438c01"
+      "bytes": 3969,
+      "sha256": "12e74514bae97f1f38b0efe7eccbcc7c90530316b417c21cffd0c69e76db0d72"
     },
     {
       "path": "docs/matlab_reproduction.md",
-      "bytes": 8543,
-      "sha256": "4890386656cb08b0dbf63c41a0c091114a4ba82673048ea1cb6a70dafcd60e73"
+      "bytes": 8436,
+      "sha256": "38024e448554510bfe384a8329c8a117a87db215513f9de964f42d7468a8e3ee"
     },
     {
       "path": "docs/numerical_provenance.md",
-      "bytes": 1558,
-      "sha256": "ba1ca2a7c37b7a3e26a623475b224c057d2e5cc6445afc880d1a1281156365f8"
+      "bytes": 1681,
+      "sha256": "f62f960a6a21b7a2a3fe0ab8c56dbd50eccc9435648db64fcd903c1bb6850441"
     },
     {
       "path": "docs/python_api.md",
       "bytes": 4879,
-      "sha256": "31a8277589a521817a87b1c3b30b0a32007bcec7cb35682f12483212b269d090"
+      "sha256": "18e83e33fba83af4a6bb5a60716cc38ae4e74bc49dce4025d217aecec294b7cc"
     },
     {
       "path": "LICENSE",
@@ -113,8 +233,8 @@
     },
     {
       "path": "plotting/prepare_publication.py",
-      "bytes": 12485,
-      "sha256": "24d16c0e6ad66b5ef5c3c53fb5a4d29ad31c29cb4eebe47571d98878fa48dfed"
+      "bytes": 12751,
+      "sha256": "0d40a444d8a9a01b69509e36ab945468cf25119009d907581ea2dafc4f6dc28d"
     },
     {
       "path": "plotting/spacing.py",
@@ -177,9 +297,14 @@
       "sha256": "a3d324ddf3cba4ede2f51a55e63ea5c8b034ab605a7314a0d6e8c1abd127c257"
     },
     {
+      "path": "provenance/data_sources.json",
+      "bytes": 13736,
+      "sha256": "efbf49855599c6a3482be9a45cc02b2c47adf523c0c25e347d1a08beaa0c7b1f"
+    },
+    {
       "path": "provenance/figure_table_registry.json",
-      "bytes": 24757,
-      "sha256": "fee5e4e1526544938e777c859066354572695fba8561315b6951de6df84db2c6"
+      "bytes": 24096,
+      "sha256": "3e85dea74b09e4b300753c667ff66a59acbe70dd7752ec37808e2eb522ff6e20"
     },
     {
       "path": "provenance/numerical_sources.json",
@@ -188,8 +313,8 @@
     },
     {
       "path": "provenance/plot_sources.json",
-      "bytes": 17384,
-      "sha256": "6de0a39d33bad4b05e94d7f9883941c2cdd79abc4f897d1cbe7922f1d88a550b"
+      "bytes": 16246,
+      "sha256": "90dedc784ad08033aa37b9403c86a91273b4880695bd9e12ab4485cb1dc96de8"
     },
     {
       "path": "pyproject.toml",
@@ -228,8 +353,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 4619,
-      "sha256": "f9dae13aeb5197fdd5d6faf238b67da2cbbcbcaaee6ea2078f2df3c112fd54c9"
+      "bytes": 5003,
+      "sha256": "e37ea05c49261a0c0ed76c1ec5dfef7c235093ca5d9741f4f3a5e78bc9497453"
     },
     {
       "path": "requirements.txt",
@@ -237,9 +362,14 @@
       "sha256": "09811ca313a3ae93fa30cd9e871eca7e757b141ac22c2e166ca940fcd0c313c1"
     },
     {
+      "path": "scripts/check_publication_data.py",
+      "bytes": 4581,
+      "sha256": "0f40f7acaa6effc8fcaaff166cd37441a9ba1b4fc16b78e2fc8fb4958132315f"
+    },
+    {
       "path": "scripts/check_release.py",
-      "bytes": 1873,
-      "sha256": "28a834f8b433066c86a4ebeca6dd2e1043073bf7fa912aa9b447370fcf1776fb"
+      "bytes": 2497,
+      "sha256": "2afa9ef066b9968d77cbdb92401ca648b4d0ddd046e8cddad7263559ba26b11b"
     },
     {
       "path": "source_archive/+dpimnumeric/ensureDir.m.txt",

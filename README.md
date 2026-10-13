@@ -1,9 +1,9 @@
 # DPIM probabilistic error estimation
 
-Source code for:
+Source code and supporting numerical data for:
 
 **The probabilistic error estimation of Direct Probability Integral Method
-for stochastic mechanics**, Guanyao Wang.
+for stochastic mechanics**, Guanyao Wang, Guohai Chen, Dixiong Yang and Rui Li.
 
 This is the current manuscript code collection. The earlier repository contents
 have been replaced in the current checkout; the Git history is retained.
@@ -19,6 +19,7 @@ have been replaced in the current checkout; the Git history is retained.
 | `source_archive/` | Current-paper production scripts preserved as source records with machine paths removed |
 | `provenance/` | Source hashes and mappings to figures, tables, and numerical stages |
 | `docs/` | Input requirements and reproduction notes |
+| `data/publication/` | Archived numerical data underlying the manuscript figures and tables |
 
 The archived production scripts have `.txt` appended to their original names.
 They document the exact calculation stages, including pool expansion and
@@ -54,12 +55,15 @@ Python 3.12. Python dependencies are listed in `requirements.txt`.
 python -m pip install -r requirements.txt
 ```
 
-Original calculation stages can require design files, reference samples, or
-saved MAT batches produced by preceding stages. No numerical data are
-distributed: this includes CSV results, interval endpoints, reference samples,
-raw pools, MAT/NPZ files, and generated figures. Supply the required inputs
-locally before running the relevant source. Consequently, this source
-collection is not a one-command reproduction of all archived trials.
+The publication dataset includes coverage counts and predictions, reference
+density ordinates, interval endpoints, recommended sample sizes, initial
+designs, GF discrepancies and finite-B coefficients. See
+[`data/publication/README.md`](data/publication/README.md) for the mapping and
+[`provenance/data_sources.json`](provenance/data_sources.json) for source hashes
+and selections. Plotting and table inputs can be read directly from that folder.
+The full raw curve pools, all trial histories and individual reference-response
+samples are not included. Running the historical simulation stages still
+requires their preceding inputs; this is not a one-command rerun of all trials.
 
 See `docs/figures.md` for input formats, label conventions, and figure mapping.
 Large calculation budgets are never launched by installing the dependencies.
@@ -72,7 +76,7 @@ completeness, and sensitive-path checks are recorded separately from numerical
 validation. The source and first-trial interval verification performed while
 preparing the manuscript are distinguished from these packaging checks.
 
-No numerical dataset, generated PDF figure, manuscript draft, account
+No generated PDF figure, manuscript draft, account
 credentials, machine-specific logs, bundled
 MathWorks installation, OS fonts, or unrelated higher-order study is included.
 Source identifiers contain historical filenames only to make provenance

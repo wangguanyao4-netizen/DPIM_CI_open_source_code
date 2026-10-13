@@ -62,7 +62,7 @@ def extract_nodes(path, names):
     return "\n\n".join(result) + "\n"
 
 
-def prepare(archive, include_sources=False):
+def prepare(archive, include_sources=False, include_reference_figures=False):
     records = []
 
     def inputs(paths, selection):
@@ -162,8 +162,9 @@ def prepare(archive, include_sources=False):
     expected = REPORT + "compile/Wang_DPIM_Unified_Framework_Euler_Corrected/DPIM_CI_full_integrated_figures/formal_current/"
     pdfs = sorted((archive / expected).glob("*.pdf"))
     assert len(pdfs) == 17
-    for p in pdfs:
-        copy(expected + p.name, "data/publication/expected/" + p.name)
+    if include_reference_figures:
+        for p in pdfs:
+            copy(expected + p.name, "data/publication/expected/" + p.name)
 
     if include_sources:
         mappings = {
@@ -212,9 +213,11 @@ def prepare(archive, include_sources=False):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--archive-root", required=True, type=Path)
+    parser.add_argument("--include-reference-figures", action="store_true",
+                        help="Copy optional comparison PDFs; excluded by default")
     parser.add_argument("--bootstrap-sources", action="store_true",
                         help="One-time maintainer extraction; refuses to overwrite adapted sources")
     args = parser.parse_args()
     if args.bootstrap_sources and (PACKAGE / "plotting/internal_n.py").exists():
         parser.error("Source bootstrap already exists; do not overwrite adapted code")
-    prepare(args.archive_root.resolve(), args.bootstrap_sources)
+    prepare(args.archive_root.resolve(), args.bootstrap_sources, args.include_reference_figures)

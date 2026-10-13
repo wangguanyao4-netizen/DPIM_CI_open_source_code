@@ -6,9 +6,9 @@ own licenses and are not included in this source package.
 
 ## Scope and Dependencies
 
-This code-only release contains the numerical Python source used in the
-current manuscript calculation. Research data, coefficient tables and figure
-files are not distributed. The FE, random-field and coefficient Python
+This release contains numerical Python source and archived publication data
+and coefficients in `data/publication`. Rendered figures and raw simulation
+histories are excluded. The FE, random-field and coefficient Python
 modules are byte-identical copies of their source
 snapshots below. The bridge changes only package imports and moves its native
 thread limit from import time to the actual FE/KL calls. It does not mutate

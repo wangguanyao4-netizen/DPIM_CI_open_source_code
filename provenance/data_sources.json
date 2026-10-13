@@ -1,0 +1,305 @@
+{
+  "schema_version": 1,
+  "release": "manuscript-data-20261013",
+  "created_utc": "2026-10-13T07:12:23.132920+00:00",
+  "scope": "Numerical data underlying manuscript figures and tables, fixed initial designs, finite-B coefficients; excludes raw pools and full trial histories",
+  "new_simulations": 0,
+  "files": [
+    {
+      "path": "data/publication/coverage.csv",
+      "sha256": "0a8bbb88336311df1ee4e802140ef0175cfea078c311ad7c46b9079dccc3e6ba",
+      "bytes": 104657,
+      "inputs": [
+        {
+          "archive_relative_path": "coverage_M30000_manuscript_20260927/publication_data/nested_M_pointwise_coverage.csv",
+          "sha256": "a5773d79c7199bd628c2c8223891e652c1a4ced249396151526e252c2441ce3e",
+          "selection": "linear/plate M30000 only; discard ALL old nonlinear rows; append nonlinear P50000 M50000 reference_N500000000"
+        },
+        {
+          "archive_relative_path": "nonlinear_reference_500M_20260927/publication_data/nested_M_pointwise_coverage.csv",
+          "sha256": "28a635906b67859651d547fbd74aa84c8ae263764d3dbfaa2315d1a1f1a5ca9e",
+          "selection": "linear/plate M30000 only; discard ALL old nonlinear rows; append nonlinear P50000 M50000 reference_N500000000"
+        }
+      ]
+    },
+    {
+      "path": "data/publication/coverage_coefficients.csv",
+      "sha256": "e9b34d7c9a22f3139cafce7f4110c16a5a308d49db9cc9eaee810bc2805f5960",
+      "bytes": 1422,
+      "inputs": [
+        {
+          "archive_relative_path": "tc_recalculation_20260922/raw_percentile_finiteB_coefficients.csv",
+          "sha256": "2ff954195ec6aeb56890d82c16bb8f50c9a95dc3a21227c88b89bf1526f2cd92",
+          "selection": "Archived numeric CSV; no calculations"
+        }
+      ]
+    },
+    {
+      "path": "data/publication/coverage_summary.csv",
+      "sha256": "ec2b318878f04618cf883011cf49c1652620e8123e8b81f30fdd7d2ff9661e0f",
+      "bytes": 3955,
+      "inputs": [
+        {
+          "archive_relative_path": "coverage_M30000_manuscript_20260927/publication_data/coverage_summary.csv",
+          "sha256": "5fb924fbf65ec1a79b7737c72485bb66d0f4f652b63fc4db34e6ebaeaf26fa8a",
+          "selection": "linear/plate M30000 including labelled Euler control; nonlinear reference_N500000000 only"
+        },
+        {
+          "archive_relative_path": "nonlinear_reference_500M_20260927/publication_data/coverage_summary.csv",
+          "sha256": "e41c978b1952947b182f616ac85a40e9fa10776d43efe1185635db0f10fa30e5",
+          "selection": "linear/plate M30000 including labelled Euler control; nonlinear reference_N500000000 only"
+        }
+      ]
+    },
+    {
+      "path": "data/publication/euler_pool_control.csv",
+      "sha256": "20ad225c5336252fa2beabdeb45346ebc7286b0350eb86471cea8f725f1e572e",
+      "bytes": 31740,
+      "inputs": [
+        {
+          "archive_relative_path": "coverage_M30000_manuscript_20260927/publication_data/nested_M_all_comparisons.csv",
+          "sha256": "0018f3e743250d1702fd9a17977d71b607538b621c9ef706d42e87e6a7d5b22f",
+          "selection": "dataset=euler_pool_control, M=30000; separate from primary evidence"
+        }
+      ]
+    },
+    {
+      "path": "data/publication/finite_B_summary.csv",
+      "sha256": "e890c11e049b61766a2e49f2ba2a609cf36c1ce6fecaa46259ce3f061952e7bc",
+      "bytes": 684,
+      "inputs": [
+        {
+          "archive_relative_path": "DPIM_CI_paper_used_only_20260804/03_results/finite_B/summary.csv",
+          "sha256": "e890c11e049b61766a2e49f2ba2a609cf36c1ce6fecaa46259ce3f061952e7bc",
+          "selection": "byte-for-byte copy of approved source"
+        }
+      ]
+    },
+    {
+      "path": "data/publication/finite_B_summary_paper_signed_difference.csv",
+      "sha256": "cce35b48dabf6ef2d528a4bc7b7e232cfce574c0b9217ca8d74f6d5c35efcca0",
+      "bytes": 412,
+      "inputs": [
+        {
+          "archive_relative_path": "DPIM_CI_paper_used_only_20260804/03_results/finite_B/summary_paper_signed_difference.csv",
+          "sha256": "cce35b48dabf6ef2d528a4bc7b7e232cfce574c0b9217ca8d74f6d5c35efcca0",
+          "selection": "byte-for-byte copy of approved source"
+        }
+      ]
+    },
+    {
+      "path": "data/publication/gf_by_dimension.csv",
+      "sha256": "6d957e1e0e3e7589a643885a903d75018778d97eb6911b577e5382c9a2821714",
+      "bytes": 1910,
+      "inputs": [
+        {
+          "archive_relative_path": "gf_discrepancy_20260927/gf_by_dimension.csv",
+          "sha256": "6d957e1e0e3e7589a643885a903d75018778d97eb6911b577e5382c9a2821714",
+          "selection": "Archived numeric CSV; no calculations"
+        }
+      ]
+    },
+    {
+      "path": "data/publication/gf_summary.csv",
+      "sha256": "7c5486a9db70afcf76af90d1b8c93cd16d63f3f108c263cc6a86fcf1d962208f",
+      "bytes": 261,
+      "inputs": [
+        {
+          "archive_relative_path": "gf_discrepancy_20260927/gf_summary.csv",
+          "sha256": "3b190182bb9f894e89dcb6af36cd52bd1f2f3a312e385298b8c94ccae831a916",
+          "selection": "Archived numerical values; local design paths replaced by public filenames"
+        }
+      ]
+    },
+    {
+      "path": "data/publication/initial_design_linear.csv",
+      "sha256": "16418cf115b24c29bad5efc451f857f72e0215907a77001db95a9a535652c346",
+      "bytes": 83759,
+      "inputs": [
+        {
+          "archive_relative_path": "gf_discrepancy_20260927/linear_initial_design.mat",
+          "sha256": "fe7b4f62046f3d09eb6dc04c354f29fb0bc110474e8dda317d7e1e793a1ae856",
+          "selection": "Original base coordinates and fixed P weights exported at full precision; no new random numbers"
+        }
+      ]
+    },
+    {
+      "path": "data/publication/initial_design_nonlinear.csv",
+      "sha256": "7dfac34f4a6636081d081ada870bb8b049897ff3972c0149d6ca260272bb4f24",
+      "bytes": 83726,
+      "inputs": [
+        {
+          "archive_relative_path": "gf_discrepancy_20260927/nonlinear_initial_design.mat",
+          "sha256": "dcfdaa7571af5e5e719507646221686e25797d33f71e128423441472f3589199",
+          "selection": "Original base coordinates and fixed P weights exported at full precision; no new random numbers"
+        }
+      ]
+    },
+    {
+      "path": "data/publication/initial_design_plate.csv",
+      "sha256": "88cc50bdf860f8f216aa9adbf3a54084ea880179c3fc9e5fb8fd1798c9632411",
+      "bytes": 41006,
+      "inputs": [
+        {
+          "archive_relative_path": "gf_discrepancy_20260927/plate_initial_design.mat",
+          "sha256": "dc63f6e2de28f00bd0688c1b68472fe4e544dce22411283740178f104e14e9ff",
+          "selection": "Original base coordinates and fixed P weights exported at full precision; no new random numbers"
+        }
+      ]
+    },
+    {
+      "path": "data/publication/internal_n.csv",
+      "sha256": "8e51ab08f97962b02ddb68f6f4cf9399e53dc463841e53a311800db16f1b5cd1",
+      "bytes": 259705,
+      "inputs": [
+        {
+          "archive_relative_path": "manuscript_selected_nonlinear500M_20260927/publication_data/n_uncentered_coverage_results.csv",
+          "sha256": "8e51ab08f97962b02ddb68f6f4cf9399e53dc463841e53a311800db16f1b5cd1",
+          "selection": "byte-for-byte copy of approved source"
+        }
+      ]
+    },
+    {
+      "path": "data/publication/intervals_linear_nonlinear.csv",
+      "sha256": "f30f51bd86185245bec21f3d03ae319e1e81550155e8bd9bcde751b98fec1287",
+      "bytes": 337749,
+      "inputs": [
+        {
+          "archive_relative_path": "paper_refresh_30000_20260926/results/mc_rqmc_recommended_R_intervals.csv",
+          "sha256": "cd6e8b1df84f65bf97da6366eca40dc57e26090c22c739e3c1f931fdbaacfaa9",
+          "selection": "Euler from original full-precision CSV; nonlinear from final500M CSV; retains independent endpoints, no re-estimation"
+        },
+        {
+          "archive_relative_path": "manuscript_selected_nonlinear500M_20260927/publication_data/mc_rqmc_recommended_R_intervals.csv",
+          "sha256": "716ec6fdd38902000ad15f9816dfe5834c19591c23bcd47f6bb0046643cea182",
+          "selection": "Euler from original full-precision CSV; nonlinear from final500M CSV; retains independent endpoints, no re-estimation"
+        }
+      ]
+    },
+    {
+      "path": "data/publication/intervals_plate.csv",
+      "sha256": "ab1416ce02f52aadf0286f9ec3e5cd94c111d2917a1d468b5bb658e432efc687",
+      "bytes": 174417,
+      "inputs": [
+        {
+          "archive_relative_path": "paper_refresh_30000_20260926/results/plate_mc_rqmc_recommended_R_intervals.csv",
+          "sha256": "ab1416ce02f52aadf0286f9ec3e5cd94c111d2917a1d468b5bb658e432efc687",
+          "selection": "byte-for-byte copy of approved source"
+        }
+      ]
+    },
+    {
+      "path": "data/publication/outer_workflow_curves.csv",
+      "sha256": "f907a7c7d221a92c05340d7462877ca9a3db8b2c26035a219798276bcc5397bb",
+      "bytes": 1052302,
+      "inputs": [
+        {
+          "archive_relative_path": "tc_recalculation_20260922/results/paper_scale_original_grid_20260922/linear_rqmc_n768/pilot_complete.mat",
+          "sha256": "a8bb788ec25e75d058b6619f7119a254865dae9b16f5ba9d8b18729be61edd2d",
+          "selection": "pilot[0:256, :] verbatim float64 ordinates; no random draws"
+        }
+      ]
+    },
+    {
+      "path": "data/publication/recommended_R.csv",
+      "sha256": "c7ca3b68d3058bea8bc3a2c722f142ba5fd58f22c863f0f7e1f068b73846fe56",
+      "bytes": 1190,
+      "inputs": [
+        {
+          "archive_relative_path": "paper_refresh_30000_20260926/results/recommended_R_before_intervals.csv",
+          "sha256": "91cb87f6812df0759470b9f31c0fb0711e840a1a0b9ff1c98d24a5804d18a9f0",
+          "selection": "replace nonlinear RQMC rows with P50000 recommendation; MC remains P30000; NOT new independent intervals"
+        },
+        {
+          "archive_relative_path": "nonlinear_P50000_M50000_20260927/publication_data/recommended_R.csv",
+          "sha256": "5d5c34b13574e77b168a0aa332e70f0423d7e9d06762788bcddb6518a1761c74",
+          "selection": "replace nonlinear RQMC rows with P50000 recommendation; MC remains P30000; NOT new independent intervals"
+        }
+      ]
+    },
+    {
+      "path": "data/publication/reference_linear.csv",
+      "sha256": "2845929078ad6a237e73c844359579e0db528b45f5291765def53b607216e5c2",
+      "bytes": 6731,
+      "inputs": [
+        {
+          "archive_relative_path": "paper_refresh_30000_20260926/publication_data/reference_linear/reference_density.csv",
+          "sha256": "2845929078ad6a237e73c844359579e0db528b45f5291765def53b607216e5c2",
+          "selection": "byte-for-byte copy of approved source"
+        }
+      ]
+    },
+    {
+      "path": "data/publication/reference_nonlinear_coverage.csv",
+      "sha256": "47338f207ceb4322984c62357d7bd285c8b84f1cc1cf155a78da5498a4c27f06",
+      "bytes": 1710,
+      "inputs": [
+        {
+          "archive_relative_path": "nonlinear_reference_500M_20260927/publication_data/reference_coverage.csv",
+          "sha256": "47338f207ceb4322984c62357d7bd285c8b84f1cc1cf155a78da5498a4c27f06",
+          "selection": "byte-for-byte copy of approved source"
+        }
+      ]
+    },
+    {
+      "path": "data/publication/reference_nonlinear_density.csv",
+      "sha256": "21426ee0dfd0ca946436219046be15e044e690695ea547cf5043c23df400e945",
+      "bytes": 13303,
+      "inputs": [
+        {
+          "archive_relative_path": "nonlinear_reference_500M_20260927/publication_data/reference_density.csv",
+          "sha256": "21426ee0dfd0ca946436219046be15e044e690695ea547cf5043c23df400e945",
+          "selection": "byte-for-byte copy of approved source"
+        }
+      ]
+    },
+    {
+      "path": "data/publication/reference_nonlinear_n_density.csv",
+      "sha256": "5550918cbfbcd87515df72873f21dc7e87dc4b308d91de6103c4ea83df4151cd",
+      "bytes": 5805,
+      "inputs": [
+        {
+          "archive_relative_path": "nonlinear_reference_500M_20260927/publication_data/reference_n_density.csv",
+          "sha256": "5550918cbfbcd87515df72873f21dc7e87dc4b308d91de6103c4ea83df4151cd",
+          "selection": "byte-for-byte copy of approved source"
+        }
+      ]
+    },
+    {
+      "path": "data/publication/reference_plate.csv",
+      "sha256": "7cdf4ec3ec3a53c165076241c57e9f04e8c6ba1d7bea77b4dd93fe9b4c9bc438",
+      "bytes": 12478,
+      "inputs": [
+        {
+          "archive_relative_path": "paper_refresh_30000_20260926/publication_data/reference_plate/reference_density.csv",
+          "sha256": "7cdf4ec3ec3a53c165076241c57e9f04e8c6ba1d7bea77b4dd93fe9b4c9bc438",
+          "selection": "byte-for-byte copy of approved source"
+        }
+      ]
+    },
+    {
+      "path": "data/publication/saved_trial_intervals.csv",
+      "sha256": "830d1c23f0fa8a16162bd58d0a2330447083e131bc8323a45bdfce96e7fbe6a4",
+      "bytes": 60382,
+      "inputs": [
+        {
+          "archive_relative_path": "reports/manuscript_structure_tables_20261012/data/saved_trial_intervals.csv",
+          "sha256": "830d1c23f0fa8a16162bd58d0a2330447083e131bc8323a45bdfce96e7fbe6a4",
+          "selection": "byte-for-byte copy of approved source"
+        }
+      ]
+    },
+    {
+      "path": "data/publication/table_interval_values.csv",
+      "sha256": "57b256e68ad2405b62d5a74e1f9e6627e91cf112b34b6c9d65fd51564df2221b",
+      "bytes": 16905,
+      "inputs": [
+        {
+          "archive_relative_path": "reports/manuscript_structure_tables_20261012/data/table_interval_values.csv",
+          "sha256": "57b256e68ad2405b62d5a74e1f9e6627e91cf112b34b6c9d65fd51564df2221b",
+          "selection": "byte-for-byte copy of approved source"
+        }
+      ]
+    }
+  ]
+}

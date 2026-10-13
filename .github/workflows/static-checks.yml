@@ -13,5 +13,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Check file hashes, source syntax, and code-only contents
+      - name: Check file hashes, source syntax, and approved data inventory
         run: python scripts/check_release.py
+      - name: Check archived numerical data consistency
+        run: python scripts/check_publication_data.py

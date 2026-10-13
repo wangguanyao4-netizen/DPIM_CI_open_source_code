@@ -13,12 +13,18 @@ MANIFEST = ROOT / 'provenance/release_manifest.json'
 def main():
     records = json.loads(MANIFEST.read_text(encoding='utf-8'))['files']
     checked_python = 0
-    excluded = {'.csv', '.mat', '.npz', '.npy', '.h5', '.hdf5', '.pdf', '.png', '.jpg', '.zip'}
+    excluded = {'.mat', '.npz', '.npy', '.h5', '.hdf5', '.pdf', '.png', '.jpg', '.zip'}
+    data_manifest = json.loads((ROOT / 'provenance/data_sources.json').read_text(encoding='utf-8'))
+    approved_data = {item['path'] for item in data_manifest['files']}
+    actual_data = {p.relative_to(ROOT).as_posix() for p in (ROOT / 'data').rglob('*') if p.is_file() and p.suffix != '.md'}
+    assert actual_data == approved_data
     for item in records:
         path = (ROOT / item['path']).resolve()
         assert path.is_relative_to(ROOT.resolve())
         assert path.is_file(), item['path']
         assert path.suffix.lower() not in excluded, item['path']
+        if path.suffix.lower() == '.csv':
+            assert item['path'] in approved_data, item['path']
         raw = path.read_bytes()
         assert hashlib.sha256(raw).hexdigest() == item['sha256'], item['path']
         if path.suffix == '.py':
@@ -31,7 +37,9 @@ def main():
             assert not re.search(r'gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|-----BEGIN (?:RSA |OPENSSH )?PRIVATE KEY-----', text), item['path']
         if path.suffix == '.json':
             json.loads(raw)
-    print(f'PASS: {len(records)} file hashes; {checked_python} Python syntax checks; no data or generated figures.')
+    for item in data_manifest['files']:
+        assert hashlib.sha256((ROOT / item['path']).read_bytes()).hexdigest() == item['sha256']
+    print(f'PASS: {len(records)} file hashes; {checked_python} Python syntax checks; {len(approved_data)} approved numerical CSV files; no manuscript or generated figures.')
     print('No simulation, numerical test, or plotting job was executed.')
 
 

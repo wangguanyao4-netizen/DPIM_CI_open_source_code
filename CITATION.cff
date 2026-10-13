@@ -1,8 +1,8 @@
 cff-version: 1.2.0
-message: "Please cite the accompanying manuscript and this repository when using the code."
+message: "Please cite the accompanying manuscript and this repository when using the code or data."
 type: software
 title: "DPIM probabilistic error estimation for stochastic mechanics"
-version: 1.0.0
+version: 1.1.0
 authors:
   - family-names: Wang
     given-names: Guanyao

@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "assembled_utc": "2026-10-13T01:44:56.3926577Z",
-  "release_mode": "code_only_no_data_distribution",
+  "release_mode": "source_and_manuscript_data",
   "validation": {
     "plots_run": false,
     "matlab_run": false,
@@ -11,11 +11,11 @@
     "numerical_figures_with_historical_sources": 11,
     "static_figures_with_sources": 6,
     "expected_pdfs_distributed": 0,
-    "data_files_distributed": 0,
-    "this_revision": "Documentation/provenance edit only; no plotting, MATLAB, experiments, or tests executed"
+    "data_files_distributed": 23,
+    "this_revision": "Archived data exported and checked; no numerical experiments or figure regeneration"
   },
   "codecomplete_policy": "false means no fresh execution/equivalence claim; it does not mean all source files are missing",
-  "data_scope": "No numerical inputs, CSV results, reference densities, interval endpoints, curve slices, raw pools, or PDF assets are distributed. All required numerical inputs must be supplied by the user.",
+  "data_scope": "Numerical data underlying manuscript figures and tables, fixed initial designs, finite-B coefficients; excludes raw pools and full trial histories",
   "figures": [
     {
       "id": "Fig03",
@@ -31,14 +31,14 @@
       ],
       "command": "addpath('plotting/matlab'); replay_matlab('<user-data-dir>','outputs/matlab_figures');",
       "codecomplete": false,
-      "status": "source_available_external_data_required_unexecuted",
+      "status": "source_and_inputs_available_not_rerendered",
       "current_pdf_equivalence": "not_checked_in_this_release",
-      "notes": "M30000 fresh independent primary; not Euler pool control",
+      "notes": "Historical numerical arrays supplied in data/publication. Figure export equivalence has not been rechecked in this data release.",
       "manuscript_figure_number": 6,
       "expected_distributed": false,
       "expected_role": "optional_user_supplied_comparison_reference",
-      "inputs_distributed": false,
-      "external_numerical_inputs_required": true
+      "inputs_distributed": true,
+      "external_numerical_inputs_required": false
     },
     {
       "id": "Fig08",
@@ -54,14 +54,14 @@
       ],
       "command": "addpath('plotting/matlab'); replay_matlab('<user-data-dir>','outputs/matlab_figures');",
       "codecomplete": false,
-      "status": "source_available_external_data_required_unexecuted",
+      "status": "source_and_inputs_available_not_rerendered",
       "current_pdf_equivalence": "not_checked_in_this_release",
-      "notes": "P30000/M30000 conditional pool experiment",
+      "notes": "Historical numerical arrays supplied in data/publication. Figure export equivalence has not been rechecked in this data release.",
       "manuscript_figure_number": 11,
       "expected_distributed": false,
       "expected_role": "optional_user_supplied_comparison_reference",
-      "inputs_distributed": false,
-      "external_numerical_inputs_required": true
+      "inputs_distributed": true,
+      "external_numerical_inputs_required": false
     },
     {
       "id": "Fig10",
@@ -77,14 +77,14 @@
       ],
       "command": "addpath('plotting/matlab'); replay_matlab('<user-data-dir>','outputs/matlab_figures');",
       "codecomplete": false,
-      "status": "source_available_external_data_required_unexecuted",
+      "status": "source_and_inputs_available_not_rerendered",
       "current_pdf_equivalence": "not_checked_in_this_release",
-      "notes": "P50000/M50000; final reference_N500000000; old nonlinear rows excluded",
+      "notes": "Historical numerical arrays supplied in data/publication. Figure export equivalence has not been rechecked in this data release.",
       "manuscript_figure_number": 14,
       "expected_distributed": false,
       "expected_role": "optional_user_supplied_comparison_reference",
-      "inputs_distributed": false,
-      "external_numerical_inputs_required": true
+      "inputs_distributed": true,
+      "external_numerical_inputs_required": false
     },
     {
       "id": "Fig03b",
@@ -105,14 +105,14 @@
       ],
       "command": "python plotting/historicalproduction.py --kind python --data-dir <user-data-dir> --output-dir outputs/python_figures",
       "codecomplete": false,
-      "status": "source_available_external_data_required_unexecuted",
+      "status": "source_and_inputs_available_not_rerendered",
       "current_pdf_equivalence": "not_checked_in_this_release",
-      "notes": "Approved lowercase pdf axis, full method names and separator-spacing adapter; no changed numerical arrays intended; not executed",
+      "notes": "Historical numerical arrays supplied in data/publication. Figure export equivalence has not been rechecked in this data release.",
       "manuscript_figure_number": 7,
       "expected_distributed": false,
       "expected_role": "optional_user_supplied_comparison_reference",
-      "inputs_distributed": false,
-      "external_numerical_inputs_required": true
+      "inputs_distributed": true,
+      "external_numerical_inputs_required": false
     },
     {
       "id": "Fig08b",
@@ -133,14 +133,14 @@
       ],
       "command": "python plotting/historicalproduction.py --kind python --data-dir <user-data-dir> --output-dir outputs/python_figures",
       "codecomplete": false,
-      "status": "source_available_external_data_required_unexecuted",
+      "status": "source_and_inputs_available_not_rerendered",
       "current_pdf_equivalence": "not_checked_in_this_release",
-      "notes": "Approved lowercase pdf axis, full method names and separator-spacing adapter; no changed numerical arrays intended; not executed",
+      "notes": "Historical numerical arrays supplied in data/publication. Figure export equivalence has not been rechecked in this data release.",
       "manuscript_figure_number": 12,
       "expected_distributed": false,
       "expected_role": "optional_user_supplied_comparison_reference",
-      "inputs_distributed": false,
-      "external_numerical_inputs_required": true
+      "inputs_distributed": true,
+      "external_numerical_inputs_required": false
     },
     {
       "id": "Fig10b",
@@ -160,14 +160,14 @@
       ],
       "command": "python plotting/historicalproduction.py --kind python --data-dir <user-data-dir> --output-dir outputs/python_figures",
       "codecomplete": false,
-      "status": "source_available_external_data_required_unexecuted",
+      "status": "source_and_inputs_available_not_rerendered",
       "current_pdf_equivalence": "not_checked_in_this_release",
-      "notes": "Approved lowercase pdf axis, full method names and separator-spacing adapter; no changed numerical arrays intended; not executed",
+      "notes": "Historical numerical arrays supplied in data/publication. Figure export equivalence has not been rechecked in this data release.",
       "manuscript_figure_number": 15,
       "expected_distributed": false,
       "expected_role": "optional_user_supplied_comparison_reference",
-      "inputs_distributed": false,
-      "external_numerical_inputs_required": true
+      "inputs_distributed": true,
+      "external_numerical_inputs_required": false
     },
     {
       "id": "Fig04",
@@ -184,14 +184,14 @@
       ],
       "command": "python plotting/historicalproduction.py --kind python --data-dir <user-data-dir> --output-dir outputs/python_figures",
       "codecomplete": false,
-      "status": "source_available_external_data_required_unexecuted",
+      "status": "source_and_inputs_available_not_rerendered",
       "current_pdf_equivalence": "not_checked_in_this_release",
-      "notes": "n192/384/768, P=M30000, R128, B399; only original plot functions, no historical main",
+      "notes": "Historical numerical arrays supplied in data/publication. Figure export equivalence has not been rechecked in this data release.",
       "manuscript_figure_number": 8,
       "expected_distributed": false,
       "expected_role": "optional_user_supplied_comparison_reference",
-      "inputs_distributed": false,
-      "external_numerical_inputs_required": true
+      "inputs_distributed": true,
+      "external_numerical_inputs_required": false
     },
     {
       "id": "Fig11",
@@ -208,14 +208,14 @@
       ],
       "command": "python plotting/historicalproduction.py --kind python --data-dir <user-data-dir> --output-dir outputs/python_figures",
       "codecomplete": false,
-      "status": "source_available_external_data_required_unexecuted",
+      "status": "source_and_inputs_available_not_rerendered",
       "current_pdf_equivalence": "not_checked_in_this_release",
-      "notes": "n192/384/768, P=M30000, R128, B399; only original plot functions, no historical main",
+      "notes": "Historical numerical arrays supplied in data/publication. Figure export equivalence has not been rechecked in this data release.",
       "manuscript_figure_number": 16,
       "expected_distributed": false,
       "expected_role": "optional_user_supplied_comparison_reference",
-      "inputs_distributed": false,
-      "external_numerical_inputs_required": true
+      "inputs_distributed": true,
+      "external_numerical_inputs_required": false
     },
     {
       "id": "Fig05",
@@ -231,14 +231,14 @@
       ],
       "command": "addpath('plotting/matlab'); replay_matlab('<user-data-dir>','outputs/matlab_figures');",
       "codecomplete": false,
-      "status": "source_available_external_data_required_unexecuted",
+      "status": "source_and_inputs_available_not_rerendered",
       "current_pdf_equivalence": "not_checked_in_this_release",
-      "notes": "Required external input: archived independently generated interval endpoints. Original circular local windows, viewport masks and pdf label are preserved in code. For nonlinear, use the final500M reference with the original endpoints; no regeneration is claimed.",
+      "notes": "Historical numerical arrays supplied in data/publication. Figure export equivalence has not been rechecked in this data release.",
       "manuscript_figure_number": 9,
       "expected_distributed": false,
       "expected_role": "optional_user_supplied_comparison_reference",
-      "inputs_distributed": false,
-      "external_numerical_inputs_required": true
+      "inputs_distributed": true,
+      "external_numerical_inputs_required": false
     },
     {
       "id": "Fig09",
@@ -254,14 +254,14 @@
       ],
       "command": "addpath('plotting/matlab'); replay_matlab('<user-data-dir>','outputs/matlab_figures');",
       "codecomplete": false,
-      "status": "source_available_external_data_required_unexecuted",
+      "status": "source_and_inputs_available_not_rerendered",
       "current_pdf_equivalence": "not_checked_in_this_release",
-      "notes": "Required external input: archived independently generated interval endpoints. Original circular local windows, viewport masks and pdf label are preserved in code. For nonlinear, use the final500M reference with the original endpoints; no regeneration is claimed.",
+      "notes": "Historical numerical arrays supplied in data/publication. Figure export equivalence has not been rechecked in this data release.",
       "manuscript_figure_number": 13,
       "expected_distributed": false,
       "expected_role": "optional_user_supplied_comparison_reference",
-      "inputs_distributed": false,
-      "external_numerical_inputs_required": true
+      "inputs_distributed": true,
+      "external_numerical_inputs_required": false
     },
     {
       "id": "Fig12",
@@ -277,14 +277,14 @@
       ],
       "command": "addpath('plotting/matlab'); replay_matlab('<user-data-dir>','outputs/matlab_figures');",
       "codecomplete": false,
-      "status": "source_available_external_data_required_unexecuted",
+      "status": "source_and_inputs_available_not_rerendered",
       "current_pdf_equivalence": "not_checked_in_this_release",
-      "notes": "Required external input: archived independently generated interval endpoints. Original circular local windows, viewport masks and pdf label are preserved in code. For nonlinear, use the final500M reference with the original endpoints; no regeneration is claimed.",
+      "notes": "Historical numerical arrays supplied in data/publication. Figure export equivalence has not been rechecked in this data release.",
       "manuscript_figure_number": 17,
       "expected_distributed": false,
       "expected_role": "optional_user_supplied_comparison_reference",
-      "inputs_distributed": false,
-      "external_numerical_inputs_required": true
+      "inputs_distributed": true,
+      "external_numerical_inputs_required": false
     },
     {
       "id": "Fig01a",
@@ -298,9 +298,9 @@
       "inputs": [],
       "command": "python plotting/historicalproduction.py --kind transport --output-dir outputs/transport",
       "codecomplete": false,
-      "status": "source_available_unexecuted",
+      "status": "source_and_inputs_available_not_rerendered",
       "current_pdf_equivalence": "not_checked_in_this_release",
-      "notes": "Original illustrative geometry, current pdf label; no small external dataset required.",
+      "notes": "Programmatic schematic source supplied. Figure export equivalence has not been rechecked in this data release.",
       "manuscript_figure_number": 1,
       "expected_distributed": false,
       "expected_role": "optional_user_supplied_comparison_reference",
@@ -319,9 +319,9 @@
       "inputs": [],
       "command": "python plotting/historicalproduction.py --kind euler --output-dir outputs/euler",
       "codecomplete": false,
-      "status": "source_available_unexecuted",
+      "status": "source_and_inputs_available_not_rerendered",
       "current_pdf_equivalence": "not_checked_in_this_release",
-      "notes": "Original standalone TikZ source. Requires external pdflatex and packages.",
+      "notes": "Programmatic schematic source supplied. Figure export equivalence has not been rechecked in this data release.",
       "manuscript_figure_number": 5,
       "expected_distributed": false,
       "expected_role": "optional_user_supplied_comparison_reference",
@@ -340,9 +340,9 @@
       "inputs": [],
       "command": "python plotting/historicalproduction.py --kind plate --output-dir outputs/plate",
       "codecomplete": false,
-      "status": "source_available_unexecuted",
+      "status": "source_and_inputs_available_not_rerendered",
       "current_pdf_equivalence": "not_checked_in_this_release",
-      "notes": "Original ReportLab vector drawing. Raster preview removed; no external data required.",
+      "notes": "Programmatic schematic source supplied. Figure export equivalence has not been rechecked in this data release.",
       "manuscript_figure_number": 10,
       "expected_distributed": false,
       "expected_role": "optional_user_supplied_comparison_reference",
@@ -363,9 +363,9 @@
       "inputs": [],
       "command": "python plotting/historicalproduction.py --kind shift --output-dir outputs/shift",
       "codecomplete": false,
-      "status": "source_available_unexecuted",
+      "status": "source_and_inputs_available_not_rerendered",
       "current_pdf_equivalence": "not_checked_in_this_release",
-      "notes": "Latest historical mechanism_arrow_tips correction included, not only early v6. TeX/PGF and font environment not verified.",
+      "notes": "Programmatic schematic source supplied. Figure export equivalence has not been rechecked in this data release.",
       "manuscript_figure_number": 3,
       "expected_distributed": false,
       "expected_role": "optional_user_supplied_comparison_reference",
@@ -386,9 +386,9 @@
       "inputs": [],
       "command": "python plotting/historicalproduction.py --kind framework --output-dir outputs/framework",
       "codecomplete": false,
-      "status": "source_available_unexecuted",
+      "status": "source_and_inputs_available_not_rerendered",
       "current_pdf_equivalence": "not_checked_in_this_release",
-      "notes": "Historical module spacing/formula correction included. Exact current PDF export lineage/equivalence remains unverified.",
+      "notes": "Programmatic schematic source supplied. Figure export equivalence has not been rechecked in this data release.",
       "manuscript_figure_number": 4,
       "expected_distributed": false,
       "expected_role": "optional_user_supplied_comparison_reference",
@@ -411,14 +411,14 @@
       ],
       "command": "python plotting/historicalproduction.py --kind outer --data-dir <user-data-dir> --output-dir outputs/outer --font-roman <local-times-roman.ttf> --font-italic <local-times-italic.ttf>",
       "codecomplete": false,
-      "status": "source_chain_partial_external_data_required_current_overlay_unverified",
+      "status": "source_and_inputs_available_not_rerendered",
       "current_pdf_equivalence": "not_checked_in_this_release",
-      "notes": "PARTIAL CHAIN: historical renderer and later current-label TeX overlay are supplied, but the first256 real pilot ordinates and density grid must be supplied externally. Background/overlay equivalence and final export remain unverified. No PDF or data asset is distributed.",
+      "notes": "Historical numerical arrays supplied in data/publication. Figure export equivalence has not been rechecked in this data release.",
       "manuscript_figure_number": 2,
       "expected_distributed": false,
       "expected_role": "optional_user_supplied_comparison_reference",
-      "inputs_distributed": false,
-      "external_numerical_inputs_required": true
+      "inputs_distributed": true,
+      "external_numerical_inputs_required": false
     }
   ],
   "tables": [
@@ -435,10 +435,10 @@
       "command": "python plotting/historicalproduction.py --kind tables --data-dir <user-data-dir> --output-dir outputs/tables",
       "rows": 42,
       "trial": 1,
-      "status": "formatter_available_external_126_row_csv_required_unexecuted",
-      "notes": "No CSV or table values are distributed. Seven archived locations, two R values, three methods per model. Not a new experiment and not the recommended-R decision table.",
-      "inputs_distributed": false,
-      "external_numerical_inputs_required": true
+      "status": "source_and_inputs_available_not_rerendered",
+      "notes": "Historical numerical arrays supplied in data/publication. Figure export equivalence has not been rechecked in this data release.",
+      "inputs_distributed": true,
+      "external_numerical_inputs_required": false
     },
     {
       "id": "plate_first_trial_endpoints",
@@ -453,10 +453,10 @@
       "command": "python plotting/historicalproduction.py --kind tables --data-dir <user-data-dir> --output-dir outputs/tables",
       "rows": 42,
       "trial": 1,
-      "status": "formatter_available_external_126_row_csv_required_unexecuted",
-      "notes": "No CSV or table values are distributed. Seven archived locations, two R values, three methods per model. Not a new experiment and not the recommended-R decision table.",
-      "inputs_distributed": false,
-      "external_numerical_inputs_required": true
+      "status": "source_and_inputs_available_not_rerendered",
+      "notes": "Historical numerical arrays supplied in data/publication. Figure export equivalence has not been rechecked in this data release.",
+      "inputs_distributed": true,
+      "external_numerical_inputs_required": false
     },
     {
       "id": "nonlinear_first_trial_endpoints",
@@ -471,10 +471,10 @@
       "command": "python plotting/historicalproduction.py --kind tables --data-dir <user-data-dir> --output-dir outputs/tables",
       "rows": 42,
       "trial": 1,
-      "status": "formatter_available_external_126_row_csv_required_unexecuted",
-      "notes": "No CSV or table values are distributed. Seven archived locations, two R values, three methods per model. Not a new experiment and not the recommended-R decision table.",
-      "inputs_distributed": false,
-      "external_numerical_inputs_required": true
+      "status": "source_and_inputs_available_not_rerendered",
+      "notes": "Historical numerical arrays supplied in data/publication. Figure export equivalence has not been rechecked in this data release.",
+      "inputs_distributed": true,
+      "external_numerical_inputs_required": false
     },
     {
       "id": "recommended_R",
@@ -484,10 +484,10 @@
       "inputs": [
         "recommended_R.csv"
       ],
-      "status": "historical_preparation_source_available_external_data_required",
-      "notes": "No CSV or table values are distributed. Nonlinear RQMC P50000 recommendation replaces P30000; MC remains P30000. Exported endpoint tables instead use table_interval_values.csv.",
-      "inputs_distributed": false,
-      "external_numerical_inputs_required": true
+      "status": "source_and_inputs_available_not_rerendered",
+      "notes": "Historical numerical arrays supplied in data/publication. Figure export equivalence has not been rechecked in this data release.",
+      "inputs_distributed": true,
+      "external_numerical_inputs_required": false
     },
     {
       "id": "finite_B_rank_baseline",
@@ -498,10 +498,10 @@
         "finite_B_summary.csv",
         "finite_B_summary_paper_signed_difference.csv"
       ],
-      "status": "historical_preparation_source_available_external_data_required",
-      "notes": "No CSV or table values are distributed. Historical simulated coverage and rank-baseline summaries, not rerun here.",
-      "inputs_distributed": false,
-      "external_numerical_inputs_required": true
+      "status": "source_and_inputs_available_not_rerendered",
+      "notes": "Historical numerical arrays supplied in data/publication. Figure export equivalence has not been rechecked in this data release.",
+      "inputs_distributed": true,
+      "external_numerical_inputs_required": false
     },
     {
       "id": "coverage_summary",
@@ -513,10 +513,10 @@
         "euler_pool_control.csv",
         "coverage.csv"
       ],
-      "status": "historical_preparation_source_available_external_data_required",
-      "notes": "No CSV or table values are distributed. Historical primary/control distinctions preserved; old nonlinear M30000 and 100M-reference summaries excluded.",
-      "inputs_distributed": false,
-      "external_numerical_inputs_required": true
+      "status": "source_and_inputs_available_not_rerendered",
+      "notes": "Historical numerical arrays supplied in data/publication. Figure export equivalence has not been rechecked in this data release.",
+      "inputs_distributed": true,
+      "external_numerical_inputs_required": false
     }
   ],
   "dependencies": {
@@ -536,13 +536,13 @@
       "user-installed production fonts"
     ],
     "maintenance_only": [
-      "scipy only for optional local extraction from a user-owned archive; no pilot slice is distributed"
+      "SciPy for extraction of archived MAT arrays; not needed to read the published CSV data"
     ],
     "excluded_runtime": [
       "PyMuPDF",
       "AGPL preview/QA integrations"
     ]
   },
-  "input_path_policy": "Every inputs entry is a filename relative to the user-selected external data directory. No data/publication directory is supplied. Pass --data-dir or the MATLAB dataDir argument explicitly.",
+  "input_path_policy": "Inputs are filenames within data/publication; pass that directory to the existing plotters.",
   "expected_path_policy": "Every expected entry is an optional comparison PDF relative to a user-supplied external reference directory. These are filename requirements only, not packaged assets or render inputs. No PDF hashes are published."
 }

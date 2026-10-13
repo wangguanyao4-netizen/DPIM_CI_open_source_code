@@ -1,0 +1,4 @@
+model,n,dimension_count,weight_sum,GF,max_dimension,design_path
+linear,768,5,1,0.00634518426585673,2,initial_design_linear.csv
+nonlinear,768,5,1,0.00861156071298375,3,initial_design_nonlinear.csv
+plate,200,10,1,0.0150105415942022,7,initial_design_plate.csv

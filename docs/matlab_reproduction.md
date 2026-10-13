@@ -5,8 +5,8 @@ does not introduce a new campaign, a new random-stream protocol, or a promise
 of from-scratch reproduction. No MATLAB, numerical experiment, coefficient
 integration, or MATLAB test was run while preparing these files. Preparation
 checks were limited to source inspection and SHA-256 comparison of code.
-This is a code-only release: no coefficient CSV, other CSV data, MAT archives,
-raw pools, fixtures, or PDF artifacts are distributed.
+Archived publication CSVs, including coefficients and first-trial endpoints,
+are in `data/publication`. Full MAT histories, raw pools and PDFs are excluded.
 
 ## Included Core
 
@@ -14,7 +14,7 @@ raw pools, fixtures, or PDF artifacts are distributed.
   existing authoritative interval function, including its original name.
 - `config/matlab_source_manifest.json` records package-relative archive
   locations and original/published code hashes, and identifies external data
-  dependencies that are not included.
+  dependencies and the location of the archived coefficient CSV.
 - `matlab/setup_dpim.m` only adds the package's MATLAB directory to the path.
   It does not import Python, change random streams, start tests, or launch an
   experiment. Historical campaigns are not added to the path automatically.
@@ -70,10 +70,10 @@ in `run_weighted_paper_evidence_suite.m`, not by a theoretical-rank-only
 baseline script. This does not make the full evidence suite a release entry
 point or authorize treating unrelated experiments as part of this paper.
 
-The coefficient CSV is a separate, external dependency of historical formula
-and recommended-R calculations. It is not included in this release and no CSV
-contents are certified by this preparation. Users must supply their own
-coefficient CSV or generate it using the preserved coefficient-calculation
+The coefficient CSV used by historical formula and recommended-R calculations
+is supplied as `data/publication/coverage_coefficients.csv`. It was copied from
+the saved calculation, not regenerated. New coefficients can be calculated
+using the preserved coefficient-calculation
 module, `python/dpim_paper/coverage_coefficients.py`, through its
 `direct_coefficients(alpha, B)` function, for alpha 0.05 and B 399/999.
 That function returns coefficient records and diagnostic metadata; those
@@ -106,10 +106,8 @@ Historical production used multiple expansions and reused existing MAT
 prefixes, fixed designs, grids, KL modes, references, and endpoint batches.
 Several historical entry points immediately load those archives; others can
 start substantial work when called. They are source records, not safe default
-launchers. Neither this directory nor the code-only source archive supplies
-the raw pools, coefficient CSVs, complete MAT histories, or a first-trial
-fixture. References to stored inputs describe historical external
-dependencies, not files shipped in this release. Without those inputs the
+launchers. Publication CSVs and first-trial endpoints are supplied, but raw
+pools and complete MAT histories remain external inputs. Without those inputs the
 historical campaigns are not an out-of-the-box, from-zero reproduction route.
 
 For exact archived replay, the original design, input arrays, all stream

@@ -1,8 +1,9 @@
 {
-  "schema_version": 2,
-  "created_utc": "2026-10-12T21:34:50.99378-04:00",
-  "path_policy": "files lists only public source-code/TeX paths relative to the release root. inputs/archive_relative_path identifies upstream source provenance, not a packaged dataset or required private absolute path.",
-  "data_scope": "No data, CSV results, numerical ordinates, interval endpoints, PDF figures, or manuscript files are distributed. All numerical plotting/table inputs must be supplied externally by the user.",
+  "schema_version": 1,
+  "created_utc": "2026-10-13T07:12:23.060632+00:00",
+  "path_policy": "Public source paths and archive-relative origins only; no private absolute paths.",
+  "data_scope": "Source provenance only; numerical data provenance is in data_sources.json.",
+  "generation_command": "python plotting/prepare_publication.py --archive-root <approved-local-archive>",
   "new_simulations": 0,
   "files": [
     {
@@ -121,8 +122,8 @@
     },
     {
       "path": "plotting/prepare_publication.py",
-      "sha256": "24d16c0e6ad66b5ef5c3c53fb5a4d29ad31c29cb4eebe47571d98878fa48dfed",
-      "bytes": 12485,
+      "sha256": "0d40a444d8a9a01b69509e36ab945468cf25119009d907581ea2dafc4f6dc28d",
+      "bytes": 12751,
       "inputs": [],
       "role": "Release adapter/documentation or optional test supplied without execution",
       "distribution": "public_source"
@@ -295,20 +296,5 @@
       "adaptation": "Original plotting code or mechanically extracted functions; portable I/O, explicit adapter, manuscript/QA/private-path side effects removed. Packaged hash is after adaptation; upstream hash is before. Not executed.",
       "distribution": "public_source"
     }
-  ],
-  "assembled_utc": "2026-10-13T01:44:56.3926577Z",
-  "validation": {
-    "mode": "documentation_only_code_only_release",
-    "plots_run": false,
-    "matlab_run": false,
-    "experiments_run": false,
-    "tests_run": false,
-    "source_hashes": "Existing source provenance hashes retained; no source files edited or hashes recomputed in this revision"
-  },
-  "scope_note": "This manifest indexes public plotting source code and TeX only. Tests, documentation, registries and all data/PDF assets are excluded from files.",
-  "release_mode": "code_only_no_data_distribution",
-  "historical_extraction_source": "plotting/prepare_publication.py",
-  "historical_extraction_note": "Source retained for provenance only. It reads a user-owned local archive and can copy data when explicitly run; it is not a code-only publication step and was not executed in this revision.",
-  "external_input_specification": "provenance/figure_table_registry.json",
-  "external_input_documentation": "docs/figures.md"
+  ]
 }
