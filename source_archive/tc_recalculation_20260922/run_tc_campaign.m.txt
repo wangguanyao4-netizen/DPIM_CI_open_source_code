@@ -1,0 +1,509 @@
+function resultRoot = run_tc_campaign(mode, resultRoot, stopAfterPilot)
+% Independent TC repetitions on the manuscript's original mechanics models.
+% Immutable small chunk files allow restart without replacing a curve pool.
+if nargin<1, mode="preflight"; end
+if nargin<3,stopAfterPilot=false;end
+codeRoot=fileparts(mfilename('fullpath'));
+repoRoot=fileparts(codeRoot);
+previousDirectory=pwd;
+cd(codeRoot);
+directoryCleanup=onCleanup(@()cd(previousDirectory)); %#ok<NASGU>
+addpath(repoRoot);
+if nargin<2, resultRoot=fullfile(codeRoot,'results',char(mode)); end
+resultRoot=char(resultRoot); mode=string(mode);
+if ~isfolder(resultRoot), mkdir(resultRoot); end
+addpath(codeRoot); addpath(fullfile(codeRoot,'plotting'));
+maxNumCompThreads(2);
+setenv('OPENBLAS_NUM_THREADS','2'); setenv('OMP_NUM_THREADS','2');
+pe=pyenv;
+if pe.Status=="NotLoaded"
+    pyenv('Version','<configure-local-path>', ...
+        'ExecutionMode','InProcess');
+end
+insert(py.sys.path,int32(0),codeRoot);
+bridge=py.importlib.import_module('tc_bridge');
+assert(logical(bridge.test_periodic_assignment()));
+cfg=localConfig(mode,codeRoot,repoRoot);
+lock=fullfile(resultRoot,'config_lock.mat');
+if isfile(lock)
+    old=load(lock,'cfg'); assert(isequaln(old.cfg,cfg),'Configuration mismatch');
+else
+    localSave(lock,struct('cfg',cfg));
+    dpimnumeric.writeJson(fullfile(resultRoot,'config_lock.json'),cfg);
+end
+models=localModels(repoRoot,cfg);
+if mode=="paper"
+    ops=struct('design',@localDesign,'pilot',@localPilot,'moments',@localMoments, ...
+        'coefficients',@localCoefficients,'save',@localSave,'key',@localKey, ...
+        'status',@localStatus,'summary',@localSummary);
+    run_tc_paper_scale(models,cfg,resultRoot,bridge,ops);
+    return
+end
+if mode=="formal" && ~isfile(fullfile(resultRoot,'fixed_plate_KL.npz'))
+    bridge.save_plate_model(fullfile(resultRoot,'fixed_plate_KL.npz'));
+end
+if mode=="preflight"
+    localPreflight(models,cfg,resultRoot,bridge);
+    return
+end
+status=struct('state','running','phase','pilot','updated_at','');
+localStatus(resultRoot,status);
+recommendation=table();
+% All pilots and recommendations are completed before production coverage.
+for im=1:numel(models)
+    model=models(im);
+    for is=1:2
+        scheme=cfg.schemes(is); n=model.n(is);
+        tag=string(model.name)+"_"+scheme+"_n"+n;
+        folder=fullfile(resultRoot,char(tag));
+        if ~isfolder(folder), mkdir(folder); end
+        design=localDesign(model,n,scheme,im*100+is,cfg,folder,bridge);
+        pilot=localPilot(model,design,cfg,folder,bridge);
+        rec=localRecommend(model,design,pilot,cfg);
+        writetable(rec,fullfile(folder,'recommended_R_before_intervals.csv'));
+        recommendation=[recommendation;rec]; %#ok<AGROW>
+        writetable(recommendation,fullfile(resultRoot,'recommended_R_before_intervals.csv'));
+        localStatus(resultRoot,struct('state','running','phase','pilot_complete', ...
+            'model',model.name,'scheme',char(scheme),'n',n,'pilot_curves',size(pilot,1), ...
+            'recommended_R',rec.R_recommended.'));
+    end
+end
+if mode=="pilot"||stopAfterPilot
+    localStatus(resultRoot,struct('state','complete','phase','pilot_only'));
+    return
+end
+% References do not enter pilot moments, response-region selection, or R.
+references=cell(numel(models),1);
+for im=1:numel(models)
+    model=models(im);
+    references{im}=localReference(model,im,cfg,resultRoot,bridge);
+end
+intervalRows=table(); coverageRows=table(); internalRows=table();
+% Export the dense interval figures before the longer coverage trials.
+for im=1:numel(models)
+    model=models(im);ref=references{im};
+    for is=1:2
+        scheme=cfg.schemes(is);n=model.n(is);
+        folder=fullfile(resultRoot,char(string(model.name)+"_"+scheme+"_n"+n));
+        s=load(fullfile(folder,'design.mat'),'design');design=s.design;
+        p=load(fullfile(folder,'pilot_complete.mat'),'pilot');
+        rec=readtable(fullfile(folder,'recommended_R_before_intervals.csv'),TextType='string',Delimiter=',');
+        localReferenceAudit(model,design,p.pilot,rec,ref,cfg,folder);
+        assert(all(rec.R_recommended<=cfg.max_R),'R exceeds safety limit');
+        one=localConcrete(model,design,rec,ref,cfg,folder,bridge);
+        intervalRows=[intervalRows;one]; %#ok<AGROW>
+    end
+end
+writetable(intervalRows,fullfile(resultRoot,'all_recommended_R_intervals.csv'));
+writetable(intervalRows(intervalRows.model~="plate",:),fullfile(resultRoot,'mc_rqmc_recommended_R_intervals.csv'));
+writetable(intervalRows(intervalRows.model=="plate",:),fullfile(resultRoot,'plate_mc_rqmc_recommended_R_intervals.csv'));
+plot_all_examples_recommended_R_with_insets(fullfile(resultRoot,'figures_intervals'), ...
+    fullfile(resultRoot,'mc_rqmc_recommended_R_intervals.csv'), ...
+    fullfile(resultRoot,'plate_mc_rqmc_recommended_R_intervals.csv'));
+intervalRows=table();
+for im=1:numel(models)
+    model=models(im); ref=references{im};
+    for is=1:2
+        scheme=cfg.schemes(is); n=model.n(is);
+        folder=fullfile(resultRoot,char(string(model.name)+"_"+scheme+"_n"+n));
+        d=load(fullfile(folder,'design.mat'),'design'); design=d.design;
+        p=load(fullfile(folder,'pilot_complete.mat'),'pilot'); pilot=p.pilot;
+        rec=readtable(fullfile(folder,'recommended_R_before_intervals.csv'),TextType='string',Delimiter=',');
+        assert(all(rec.R_recommended<=cfg.max_R),'Recommended R exceeds the explicit safety limit; results retained');
+        one=localConcrete(model,design,rec,ref,cfg,folder,bridge);
+        intervalRows=[intervalRows;one]; %#ok<AGROW>
+        writetable(intervalRows,fullfile(resultRoot,'all_recommended_R_intervals.csv'));
+        selected=intervalRows(intervalRows.model~="plate",:);
+        if ~isempty(selected), writetable(selected,fullfile(resultRoot,'mc_rqmc_recommended_R_intervals.csv')); end
+        selected=intervalRows(intervalRows.model=="plate",:);
+        if ~isempty(selected), writetable(selected,fullfile(resultRoot,'plate_mc_rqmc_recommended_R_intervals.csv')); end
+        % Both base schemes are verified at their own recommended R.
+        Rvalues=unique(rec.R_recommended).';
+        if scheme=="rqmc", Rvalues=unique([model.R,Rvalues]); end
+        for R=Rvalues
+            rows=localCoverage(model,design,pilot,ref,R,cfg.M,cfg,folder,bridge,201);
+            coverageRows=[coverageRows;rows]; %#ok<AGROW>
+            writetable(coverageRows,fullfile(resultRoot,'all_pointwise_coverage.csv'));
+            localExportLegacyCoverage(coverageRows,models,resultRoot);
+        end
+    end
+    % Only the Euler and nonlinear cases have an original internal-n figure.
+    if model.name~="plate"
+        for n=cfg.n_values
+            folder=fullfile(resultRoot,char(string(model.name)+"_rqmc_n"+n));
+            if ~isfolder(folder), mkdir(folder); end
+            design=localDesign(model,n,"rqmc",im*100+1,cfg,folder,bridge);
+            pilot=localPilot(model,design,cfg,folder,bridge);
+            rows=localCoverage(model,design,pilot,ref,128,cfg.M_internal,cfg,folder,bridge,301);
+            internalRows=[internalRows;rows]; %#ok<AGROW>
+            writetable(internalRows,fullfile(resultRoot,'n_uncentered_coverage_results.csv'));
+        end
+    end
+end
+localStatus(resultRoot,struct('state','computations_complete','phase','plotting'));
+writetable(localSummary(coverageRows),fullfile(resultRoot,'paper_coverage_summary.csv'));
+writetable(localSummary(internalRows),fullfile(resultRoot,'internal_n_summary.csv'));
+plot_nested_M_paper_style(resultRoot);
+plot_all_examples_recommended_R_with_insets(fullfile(resultRoot,'figures_intervals'), ...
+    fullfile(resultRoot,'mc_rqmc_recommended_R_intervals.csv'), ...
+    fullfile(resultRoot,'plate_mc_rqmc_recommended_R_intervals.csv'));
+localStatus(resultRoot,struct('state','complete','phase','matlab_figures_complete'));
+end
+
+function localReferenceAudit(model,design,pilot,rec,ref,cfg,folder)
+[~,~,v]=localMoments(pilot);mu=mean(pilot,1);core=mu>=.05*max(mu);
+R=max([model.R,rec.R_recommended.']);ratio=ref.se./sqrt(v/R);
+needed=ceil(ref.N*(ratio/cfg.reference_ratio_warning).^2);
+T=table(model.y.',ratio.',needed.',core.', ...
+    'VariableNames',{'y','reference_se_over_outer_se','estimated_N_ref_for_ratio_0p1','pilot_core'});
+writetable(T,fullfile(folder,'reference_precision_audit.csv'));
+if any(ratio(core)>cfg.reference_ratio_warning)
+    fprintf('REFERENCE PRECISION REVIEW: %s %s max core ratio %.4g; Nref %.0f suggested\n', ...
+        model.name,design.scheme,max(ratio(core)),max(needed(core)));
+end
+end
+
+function cfg=localConfig(mode,codeRoot,repoRoot)
+cfg=struct('schema','tc_campaign_v1','mode',char(mode),'code_root',codeRoot, ...
+    'alpha',.05,'epsilon',.01,'P_pilot',4096,'N_V',50000,'M',5000, ...
+    'M_internal',400,'n_values',[192,384,768],'N_ref',2000000, ...
+    'N_ref_plate',10000,'R_floor',16,'max_R',1024,'chunk',32, ...
+    'seed',202609220,'schemes',["rqmc","mc"], ...
+    'mc_definition','TC with frozen iid uniform MC base', ...
+    'max_threads',2,'reference_ratio_warning',.1,'centering',false, ...
+    'finite_pool_resampling',false);
+if mode=="smoke"
+    cfg.P_pilot=64;cfg.N_V=2000;cfg.M=8;cfg.M_internal=8;
+    cfg.N_ref=2000;cfg.N_ref_plate=64;cfg.n_values=[24,48];cfg.max_R=1024;
+end
+if mode=="paper"
+    cfg.schema='tc_paper_pool_v1';cfg.finite_pool_resampling=true;
+    cfg.M_prefixes=[250,400,1000,5000];
+    cfg.source_root=fullfile(codeRoot,'results','formal_20260922');
+    cfg.coverage_policy='iid draws with replacement from unchanged stored TC curves';
+    cfg.reference_policy='existing independent MC estimate; no automatic expansion';
+end
+assert(any(mode==["preflight","smoke","pilot","formal","paper"]));
+cfg.original_reference_configuration=fullfile(repoRoot,'DPIM_CI_paper_used_only_20260804', ...
+    '03_results','plate_outer_moments','config.json');
+end
+
+function models=localModels(repoRoot,cfg)
+p=jsondecode(fileread(cfg.original_reference_configuration));
+models(1)=struct('name',"linear",'d',5,'h',.08,'y',linspace(-3,3,201), ...
+    'n',[768,20000],'B',399,'R',[32,128]);
+models(2)=struct('name',"nonlinear",'d',5,'h',.08, ...
+    'y',linspace(1.20449,3.32083,201),'n',[768,20000],'B',399,'R',[16,128]);
+models(3)=struct('name',"plate",'d',10,'h',p.h, ...
+    'y',reshape(p.w_grid,1,[]),'n',[200,1000],'B',999,'R',[16,128]);
+if string(cfg.mode)=="smoke"
+    for k=1:3, models(k).n=[24,32];models(k).R=[16,32];end
+end
+end
+
+function localPreflight(models,cfg,root,bridge)
+bench=double(bridge.benchmark());
+disp(bench); fprintf('Plate seconds per response: %.6f\n',bench(1)/bench(2));
+bridge.save_plate_model(fullfile(root,'fixed_plate_KL.npz'));
+checks=struct('periodic_assignment_bruteforce',true,'plate_direct_parity',true, ...
+    'plate_seconds_per_response',bench(1)/bench(2),'threads',2);
+d=struct('base',[.05;.65],'P',[.25;.75]);
+u=(0:4095)'/4096; q=.25*cos(2*pi*mod(u+d.base(1),1))+.75*cos(2*pi*mod(u+d.base(2),1));
+assert(abs(mean(q))<1e-12);checks.periodic_unbiased_quadrature=true;
+x=reshape(sin(1:1280),32,40);a=tc_intervals_from_original(x,399,.05,91);
+b=tc_intervals_from_original(x+3,399,.05,91);
+assert(max(abs((b.lower-a.lower)-3),[],'all')<1e-10);
+assert(max(abs((b.upper-a.upper)-3),[],'all')<1e-10);
+checks.interval_translation_equivariance=true;
+c=tc_intervals_from_original(ones(16,2),399,.05,19);
+assert(all(c.lower==1,'all')&&all(c.upper==1,'all'));
+checks.zero_variance_and_ties_defined=true;
+coef=localCoefficients(399,cfg);
+assert(abs(coef(2,2)+.08277147654403276)<1e-12);
+assert(abs(coef(3,3)-.48681835386840555)<1e-12);
+checks.corrected_percentile_and_bt_coefficients=true;
+checks.estimated_TC_plate_R128_M5000_hours=bench(1)/bench(2)*200*128*5000/3600;
+for im=1:3
+    design=localDesign(models(im),24,"rqmc",im*100+1,cfg,root,bridge,false);
+    q=localCurves(models(im),design,4,models(im).y,817+im,bridge);
+    assert(all(isfinite(q),'all')&&all(q>=0,'all'));
+end
+checks.three_models_finite_nonnegative=true;
+dpimnumeric.writeJson(fullfile(root,'preflight.json'),checks);
+fprintf('PREFLIGHT PASS\n');
+end
+
+function design=localDesign(model,n,scheme,code,cfg,folder,bridge,writeFile)
+if nargin<8,writeFile=true;end
+file=fullfile(folder,'design.mat');
+if writeFile&&isfile(file)
+    s=load(file,'design');design=s.design;
+    assert(design.n==n&&design.scheme==scheme&&design.model==model.name);return
+end
+seed=cfg.seed+code*10000+n;
+rng(seed,'twister');
+if scheme=="rqmc"
+    base=net(scramble(sobolset(model.d),'MatousekAffineOwen'),n);
+else
+    base=rand(n,model.d);
+end
+P=reshape(double(bridge.assigned_probabilities(py.numpy.array(base),int32(cfg.N_V),int64(seed+1))),[],1);
+assert(all(P>=0)&&abs(sum(P)-1)<1e-12);
+design=struct('base',base,'P',P,'n',n,'scheme',scheme,'code',code, ...
+    'seed',seed,'model',model.name,'generator','frozen base plus independent additive uniform shift');
+if writeFile,localSave(file,struct('design',design));end
+end
+
+function theta=localNormal(u)
+% Only exact floating-point endpoints are moved to the nearest interior value.
+u(u==0)=realmin;u(u==1)=1-eps/2;
+theta=norminv(u);assert(all(isfinite(theta),'all'));
+end
+
+function y=localResponse(model,theta,bridge)
+switch model.name
+    case "linear"
+        j=1:5;a=sin(j*pi/2)./(j*pi).^2;a=a/norm(a);y=theta*a.';
+    case "nonlinear"
+        y=2+.12*sum(theta,2)+.25*tanh(theta(:,1).*theta(:,2)) ...
+            +.08*(theta(:,3).^2-1)+.06*sin(theta(:,4).*theta(:,5));
+    case "plate"
+        y=reshape(double(bridge.solve_plate(py.numpy.array(theta))),[],1);
+end
+end
+
+function q=localCurves(model,design,count,grid,seed,bridge)
+stream=RandStream('Threefry',Seed=20260922);stream.Substream=seed;
+q=zeros(count,numel(grid));
+for k=1:count
+    u=mod(design.base+rand(stream,1,model.d),1);
+    y=localResponse(model,localNormal(u),bridge);
+    curve=zeros(1,numel(grid));
+    for st=1:2048:numel(y)
+        ix=st:min(st+2047,numel(y));
+        K=exp(-.5*((grid-y(ix))/model.h).^2)/(sqrt(2*pi)*model.h);
+        curve=curve+design.P(ix).'*K;
+    end
+    q(k,:)=curve;
+end
+end
+
+function pilot=localPilot(model,design,cfg,folder,bridge)
+file=fullfile(folder,'pilot_complete.mat');
+if isfile(file),s=load(file,'pilot');pilot=s.pilot;return;end
+pilot=zeros(cfg.P_pilot,numel(model.y));
+for start=1:cfg.chunk:cfg.P_pilot
+    stop=min(start+cfg.chunk-1,cfg.P_pilot);
+    name=fullfile(folder,sprintf('pilot_%05d_%05d.mat',start,stop));
+    if isfile(name),s=load(name,'q');q=s.q;
+    else
+        t=tic;q=localCurves(model,design,stop-start+1,model.y, ...
+            localKey(design,3,0,start),bridge);
+        localSave(name,struct('q',q,'start',start,'stop',stop,'seconds',toc(t)));
+    end
+    pilot(start:stop,:)=q;
+    fprintf('%s %s n=%d pilot %d/%d\n',model.name,design.scheme,design.n,stop,cfg.P_pilot);
+    localStatus(fileparts(folder),struct('state','running','phase','pilot', ...
+        'model',model.name,'scheme',design.scheme,'n',design.n,'completed',stop,'target',cfg.P_pilot));
+end
+localSave(file,struct('pilot',pilot));
+end
+
+function [gamma,kappa,v]=localMoments(q)
+N=size(q,1);dx=q-mean(q,1);m2=mean(dx.^2,1);m3=mean(dx.^3,1);m4=mean(dx.^4,1);
+v=N/(N-1)*m2;k3=N^2/((N-1)*(N-2))*m3;
+k4=N^2*((N+1)*m4-3*(N-1)*m2.^2)/((N-1)*(N-2)*(N-3));
+gamma=k3./v.^1.5;kappa=k4./v.^2;
+end
+
+function coeff=localCoefficients(B,cfg)
+t=readtable(fullfile(cfg.code_root,'raw_percentile_finiteB_coefficients.csv'), ...
+    TextType='string',Delimiter=',');
+names=["t distribution","percentile bootstrap","bootstrap-t"]; keys=["A0","A4","A33"];
+coeff=zeros(3,3);
+for m=1:3,for j=1:3
+    row=t(t.B==B&t.method==names(m)&t.coefficient==keys(j),:);assert(height(row)==1);
+    coeff(m,j)=row.value;
+end,end
+end
+
+function rec=localRecommend(model,design,pilot,cfg)
+[gamma,kappa,v]=localMoments(pilot);density=mean(pilot,1);
+core=density>=.05*max(density);
+assert(all(isfinite(gamma(core)))&&all(isfinite(kappa(core)))&&all(v(core)>0));
+coeff=localCoefficients(model.B,cfg);G=max(abs(gamma(core)));K=max(abs(kappa(core)));
+base=[.95; (ceil((model.B+1)*.975)-floor((model.B+1)*.025))/(model.B+1); ...
+    (ceil((model.B+1)*.975)-floor((model.B+1)*.025))/(model.B+1)];
+load=abs(coeff(:,1))+abs(coeff(:,2))*K+abs(coeff(:,3))*G^2;
+R=max(cfg.R_floor,ceil(load./(cfg.epsilon-abs(base-.95))));
+if string(cfg.mode)=="smoke"
+    % Pipeline test only: no sample-size recommendation is claimed from 64 curves.
+    R(:)=16;
+end
+rec=table(repmat(model.name,3,1),repmat(design.scheme,3,1), ...
+    ["Student t";"percentile bootstrap";"bootstrap-t"],repmat(design.n,3,1), ...
+    repmat(model.B,3,1),R,load,repmat(G,3,1),repmat(K,3,1), ...
+    'VariableNames',{'model','scheme','method','n','B','R_recommended','Lambda','Gamma','Kappa'});
+end
+
+function ref=localReference(model,im,cfg,root,bridge)
+folder=fullfile(root,'reference_'+model.name);if ~isfolder(folder),mkdir(folder);end
+N=cfg.N_ref;if model.name=="plate",N=cfg.N_ref_plate;end
+file=fullfile(folder,'reference.mat');
+if isfile(file),s=load(file,'ref');ref=s.ref;return;end
+chunk=10000;if model.name=="plate",chunk=200;end
+total=zeros(1,numel(model.y));sq=total;
+for start=1:chunk:N
+    stop=min(start+chunk-1,N);name=fullfile(folder,sprintf('responses_%08d_%08d.mat',start,stop));
+    if isfile(name),s=load(name,'response');response=s.response;
+    else
+        stream=RandStream('Threefry',Seed=20260922);
+        referenceDesign=struct('code',im*100+1,'n',0);
+        stream.Substream=localKey(referenceDesign,4,0,(start-1)/chunk+1);
+        response=localResponse(model,randn(stream,stop-start+1,model.d),bridge);
+        localSave(name,struct('response',response));
+    end
+    for st=1:2048:numel(response)
+        ix=st:min(st+2047,numel(response));
+        H=exp(-.5*((model.y-response(ix))/model.h).^2)/(sqrt(2*pi)*model.h);
+        total=total+sum(H,1);sq=sq+sum(H.^2,1);
+    end
+    if mod(start-1,10*chunk)==0,fprintf('%s independent reference %d/%d\n',model.name,stop,N);end
+    localStatus(root,struct('state','running','phase','reference','model',model.name,'completed',stop,'target',N));
+end
+ref=struct('y',model.y,'density',total/N,'se',sqrt(max(sq-total.^2/N,0)/(N*(N-1))), ...
+    'N',N,'h',model.h,'method','iid equal weight MC kernel mean');
+localSave(file,struct('ref',ref));
+writetable(table(model.y.',ref.density.',ref.se.','VariableNames',{'y','reference_density','reference_se'}), ...
+    fullfile(folder,'reference_density.csv'));
+end
+
+function T=localConcrete(model,design,rec,ref,cfg,folder,bridge)
+file=fullfile(folder,'recommended_intervals.mat');
+if isfile(file),s=load(file,'T');T=s.T;return;end
+T=table();methods=["Student t","percentile bootstrap","bootstrap-t"];
+for m=1:3
+    R=rec.R_recommended(m);seed=localKey(design,5,R,m);
+    q=localCurves(model,design,R,model.y,seed,bridge);
+    out=tc_intervals_from_original(q,model.B,.05,localKey(design,6,R,m));G=numel(model.y);
+    row=table(repmat(design.scheme,G,1),repmat(model.name,G,1), ...
+        repmat(methods(m),G,1),repmat(design.n,G,1),repmat(R,G,1), ...
+        repmat(model.B,G,1),model.y.',ref.density.',out.mean.',out.sd.', ...
+        out.lower(m,:).',out.upper(m,:).', ...
+        'VariableNames',{'scheme','model','method','n','R','B','y','reference_density', ...
+        'sample_mean','sample_sd','ci_lower','ci_upper'});
+    T=[T;row]; %#ok<AGROW>
+    localSave(fullfile(folder,sprintf('recommended_method_%d_raw.mat',m)),struct('q',q,'out',out,'seed',seed));
+end
+localSave(file,struct('T',T));
+end
+
+function rows=localCoverage(model,design,pilot,ref,R,M,cfg,folder,bridge,phase)
+% At most 25 independently chosen response locations, identical across methods.
+idx=unique(round(linspace(1,numel(model.y),25)));grid=model.y(idx);
+sub=fullfile(folder,sprintf('production_%d_R%d_M%d',phase,R,M));
+if ~isfolder(sub),mkdir(sub);end
+lo=zeros(M,3,numel(idx));hi=lo;zero=zeros(M,numel(idx));ties=zero;
+for trial=1:M
+    name=fullfile(sub,sprintf('trial_%05d.mat',trial));
+    if isfile(name),s=load(name,'out');out=s.out;
+    else
+        stage=7;if phase==301,stage=9;end
+        seed=localKey(design,stage,R,trial);
+        timer=tic;q=localCurves(model,design,R,grid,seed,bridge);
+        out=tc_intervals_from_original(q,model.B,.05,localKey(design,stage+1,R,trial));
+        localSave(name,struct('out',out,'q',q,'seed',seed,'seconds',toc(timer)));
+    end
+    lo(trial,:,:)=out.lower;hi(trial,:,:)=out.upper;
+    zero(trial,:)=out.zero_bootstrap_variance;ties(trial,:)=out.bootstrap_mean_ties;
+    if mod(trial,10)==0||trial==M
+        fprintf('%s %s n=%d R=%d trial %d/%d\n',model.name,design.scheme,design.n,R,trial,M);
+        localStatus(fileparts(folder),struct('state','running','phase','independent_coverage', ...
+            'model',model.name,'scheme',design.scheme,'n',design.n,'R',R,'completed',trial,'target',M));
+    end
+end
+[gamma,kappa,v]=localMoments(pilot);coeff=localCoefficients(model.B,cfg);
+rows=table();methods=["Student t","percentile bootstrap","bootstrap-t"];
+prefixes=unique([min(250,M),min(1000,M),M]);
+for prefix=prefixes
+for m=1:3
+    lower=reshape(lo(1:prefix,m,:),prefix,[]);upper=reshape(hi(1:prefix,m,:),prefix,[]);
+    hits=sum(lower<=ref.density(idx)&upper>=ref.density(idx),1);
+    count_inf=sum(~isfinite(lower)|~isfinite(upper),1);
+    cpLo=zeros(size(hits));cpHi=ones(size(hits));
+    a=hits>0;cpLo(a)=betaincinv(.025,hits(a),prefix-hits(a)+1);
+    a=hits<prefix;cpHi(a)=betaincinv(.975,hits(a)+1,prefix-hits(a));
+    baseline=.95;
+    if m>1,baseline=(ceil((model.B+1)*.975)-floor((model.B+1)*.025))/(model.B+1);end
+    pred=baseline+(coeff(m,1)+coeff(m,2)*kappa(idx)+coeff(m,3)*gamma(idx).^2)/R;
+    G=numel(idx);
+    row=table(repmat(model.name,G,1),repmat(design.scheme,G,1),repmat(methods(m),G,1), ...
+        repmat(design.n,G,1),repmat(R,G,1),repmat(model.B,G,1),repmat(prefix,G,1), ...
+        grid.',hits.',hits.'/prefix,cpLo.',cpHi.',pred.',count_inf.',ref.density(idx).', ...
+        ref.se(idx).',sqrt(v(idx).'/R),mean(upper-lower,1).', ...
+        'VariableNames',{'model','scheme','method','n','R','B','M','y','hit_count','coverage', ...
+        'cp95_lower','cp95_upper','formula_prediction','interval_inf_count','truth', ...
+        'reference_se','outer_mean_se','mean_interval_length'});
+    rows=[rows;row]; %#ok<AGROW>
+end
+end
+writetable(rows,fullfile(sub,'coverage.csv'));
+localSave(fullfile(sub,'diagnostics.mat'),struct('zero_variance',zero,'ties',ties));
+end
+
+function localExportLegacyCoverage(rows,models,root)
+T=table();
+for im=1:3
+    a=rows(rows.model==models(im).name&rows.scheme=="rqmc"&ismember(rows.R,models(im).R),:);
+    T=[T;a]; %#ok<AGROW>
+end
+if ~isempty(T),writetable(T,fullfile(root,'nested_M_pointwise_coverage.csv'));end
+end
+
+function summary=localSummary(rows)
+% Same summaries as run_nested_M_coverage_resolution, with TC design keys.
+groups=findgroups(rows.model,rows.scheme,rows.n,rows.method,rows.R,rows.B,rows.M);
+model=splitapply(@(x)x(1),rows.model,groups);
+scheme=splitapply(@(x)x(1),rows.scheme,groups);
+n=splitapply(@(x)x(1),rows.n,groups);
+method=splitapply(@(x)x(1),rows.method,groups);
+R=splitapply(@(x)x(1),rows.R,groups);
+B=splitapply(@(x)x(1),rows.B,groups);
+M=splitapply(@(x)x(1),rows.M,groups);
+meanCoverage=splitapply(@mean,rows.coverage,groups);
+rmse=splitapply(@(x)sqrt(mean(x.^2)),rows.coverage-rows.formula_prediction,groups);
+meanHalfWidth=splitapply(@(lo,hi)mean((hi-lo)/2),rows.cp95_lower,rows.cp95_upper,groups);
+insideRate=splitapply(@mean,rows.formula_prediction>=rows.cp95_lower & ...
+    rows.formula_prediction<=rows.cp95_upper,groups);
+infRate=splitapply(@(x,m)sum(x)/(numel(x)*m(1)),rows.interval_inf_count,rows.M,groups);
+summary=table(model,scheme,n,method,R,B,M,meanCoverage,rmse,meanHalfWidth,insideRate,infRate);
+end
+
+function localSave(path,payload)
+% Completed chunks are immutable; a partial file never replaces a good file.
+if isfile(path)
+    previous=load(path);
+    assert(isequaln(previous,payload),'Refusing to replace different immutable result: %s',path);
+    return
+end
+temp=[char(path),'.writing.mat'];
+if isfile(temp),error('Unverified partial write exists: %s',temp);end
+save(temp,'-struct','payload','-v7');
+probe=load(temp);assert(isequaln(probe,payload),'Readback failed: %s',path);
+[ok,msg]=movefile(temp,path);assert(ok,msg);
+end
+
+function key=localKey(design,stage,R,index)
+% Disjoint Threefry substreams; no hash collisions or seed arithmetic overlap.
+assert(index>=0&&index<10000&&R<2048&&design.n<32768&&stage<16);
+key=((((stage*1000+design.code)*32768+design.n)*2048+R)*10000+index)+1;
+assert(key<flintmax&&key==floor(key));
+end
+
+function localStatus(root,state)
+root=char(root);
+state.updated_at=char(datetime('now',Format='yyyy-MM-dd HH:mm:ss Z'));
+path=fullfile(root,'progress.json');temp=[path,'.writing'];
+fid=fopen(temp,'w');assert(fid>=0);fwrite(fid,jsonencode(state,PrettyPrint=true),'char');fclose(fid);
+jsondecode(fileread(temp));movefile(temp,path,'f');
+end

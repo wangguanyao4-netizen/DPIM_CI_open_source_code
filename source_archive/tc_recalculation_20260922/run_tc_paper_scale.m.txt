@@ -1,0 +1,206 @@
+function run_tc_paper_scale(models,cfg,root,bridge,ops)
+% Original finite-pool experiment, without any target-matching translation.
+source=cfg.source_root;
+assert(~strcmp(source,root),'Source results must remain read-only');
+ops.status(root,struct('state','running','phase','import_existing_pools'));
+for name=["recommended_R_before_intervals.csv","fixed_plate_KL.npz"]
+    copyVerified(fullfile(source,name),fullfile(root,name));
+end
+intervalRows=table();
+for im=1:numel(models)
+    model=models(im);
+    refFolder=fullfile(root,"reference_"+model.name);ensure(refFolder);
+    for name=["reference.mat","reference_density.csv"]
+        copyVerified(fullfile(source,"reference_"+model.name,name),fullfile(refFolder,name));
+    end
+    for is=1:2
+        folder=fullfile(root,model.name+"_"+cfg.schemes(is)+"_n"+model.n(is));ensure(folder);
+        old=fullfile(source,model.name+"_"+cfg.schemes(is)+"_n"+model.n(is));
+        for name=["design.mat","pilot_complete.mat","recommended_R_before_intervals.csv", ...
+                "recommended_intervals.mat"]
+            copyVerified(fullfile(old,name),fullfile(folder,name));
+        end
+        for m=1:3
+            name=sprintf('recommended_method_%d_raw.mat',m);
+            copyVerified(fullfile(old,name),fullfile(folder,name));
+        end
+        s=load(fullfile(folder,'recommended_intervals.mat'),'T');
+        intervalRows=[intervalRows;s.T]; %#ok<AGROW>
+    end
+end
+writetable(intervalRows,fullfile(root,'all_recommended_R_intervals.csv'));
+writetable(intervalRows(intervalRows.model~="plate",:),fullfile(root,'mc_rqmc_recommended_R_intervals.csv'));
+writetable(intervalRows(intervalRows.model=="plate",:),fullfile(root,'plate_mc_rqmc_recommended_R_intervals.csv'));
+coverage=table();internal=table();poolAudit=table();
+oldCoverage=readtable(fullfile(fileparts(cfg.code_root),'DPIM_CI_paper_used_only_20260804', ...
+    '03_results','coverage_M5000','nested_M_pointwise_coverage.csv'),TextType='string',Delimiter=',');
+for im=1:numel(models)
+    model=models(im);s=load(fullfile(root,"reference_"+model.name,'reference.mat'),'ref');ref=s.ref;
+    folder=fullfile(root,model.name+"_rqmc_n"+model.n(1));
+    s=load(fullfile(folder,'design.mat'),'design');design=s.design;
+    s=load(fullfile(folder,'pilot_complete.mat'),'pilot');pool=s.pilot;
+    assert(size(pool,2)==201 && all(isfinite(pool),'all'));
+    poolAudit=[poolAudit;auditPool(model,design,pool,ref)]; %#ok<AGROW>
+    coverageModel=model;coverageModel.y=unique(oldCoverage.y(oldCoverage.model==model.name)).';
+    assert(numel(coverageModel.y)==25);
+    covFolder=fullfile(root,'coverage_grid',model.name+"_rqmc_n"+model.n(1));ensure(covFolder);
+    if model.name=="plate"
+        [gap,locations]=min(abs(coverageModel.y(:)-model.y),[],2);
+        assert(all(gap<=64*eps(max(abs(model.y)))) && numel(unique(locations))==25, ...
+            'Original plate coordinates must match stored columns to roundoff');
+        coveragePool=pool(:,locations);coverageRef=ref;
+        coverageRef.y=coverageModel.y;coverageRef.density=ref.density(locations);coverageRef.se=ref.se(locations);
+        ops.save(fullfile(covFolder,'pilot_complete.mat'),struct('pilot',coveragePool));
+        ops.save(fullfile(root,"reference_"+model.name,'reference_coverage_grid.mat'),struct('ref',coverageRef));
+    else
+        coveragePool=ops.pilot(coverageModel,design,cfg,covFolder,bridge);
+        coverageRef=referenceOnGrid(coverageModel,ref,source,root,ops,'coverage_grid');
+    end
+    for R=model.R
+        rows=poolCoverage(coverageModel,design,coveragePool,coverageRef,R,cfg.M,cfg.M_prefixes,11,root,cfg,ops);
+        coverage=[coverage;rows]; %#ok<AGROW>
+        writetable(coverage,fullfile(root,'nested_M_pointwise_coverage.csv'));
+        writetable(coverage,fullfile(root,'all_pointwise_coverage.csv'));
+    end
+    if model.name~="plate"
+        oldN=readtable(fullfile(fileparts(cfg.code_root),'DPIM_CI_paper_used_only_20260804', ...
+            '03_results','internal_n','n_centered_coverage_results.csv'),TextType='string',Delimiter=',');
+        nModel=model;nModel.y=unique(oldN.y(oldN.model==model.name)).';
+        assert(numel(nModel.y)==81,'Original n-study grid must have 81 coordinates');
+        previous=fullfile(cfg.code_root,'results','paper_scale_20260922');
+        refPath=fullfile(root,"reference_"+model.name,'reference_n_grid.mat');
+        copyVerified(fullfile(previous,"reference_"+model.name,'reference_n_grid.mat'),refPath);
+        nRef=referenceOnGrid(nModel,ref,source,root,ops,'n_grid');
+        for n=cfg.n_values
+            folder=fullfile(root,'n_study',model.name+"_rqmc_n"+n);ensure(folder);
+            for name=["design.mat","pilot_complete.mat"]
+                copyVerified(fullfile(previous,'n_study',model.name+"_rqmc_n"+n,name),fullfile(folder,name));
+            end
+            design=ops.design(nModel,n,"rqmc",im*100+1,cfg,folder,bridge);
+            pool=ops.pilot(nModel,design,cfg,folder,bridge);
+            rows=poolCoverage(nModel,design,pool,nRef,128,cfg.M_internal,cfg.M_internal,13,root,cfg,ops);
+            internal=[internal;rows]; %#ok<AGROW>
+            writetable(internal,fullfile(root,'n_uncentered_coverage_results.csv'));
+        end
+    end
+end
+writetable(poolAudit,fullfile(root,'pool_reference_diagnostics.csv'));
+writetable(ops.summary(coverage),fullfile(root,'paper_coverage_summary.csv'));
+writetable(ops.summary(internal),fullfile(root,'internal_n_summary.csv'));
+ops.status(root,struct('state','computations_complete','phase','plotting'));
+plot_nested_M_paper_style(root);
+plot_all_examples_recommended_R_with_insets(fullfile(root,'figures_intervals'), ...
+    fullfile(root,'mc_rqmc_recommended_R_intervals.csv'), ...
+    fullfile(root,'plate_mc_rqmc_recommended_R_intervals.csv'));
+ops.status(root,struct('state','complete','phase','matlab_figures_complete'));
+end
+
+function rows=poolCoverage(model,design,pool,ref,R,M,prefixes,stage,root,cfg,ops)
+idx=unique(round(linspace(1,numel(model.y),25)));grid=model.y(idx);G=numel(idx);
+if stage==13,idx=1:numel(model.y);grid=model.y;G=numel(idx);end
+folder=fullfile(root,model.name+"_rqmc_n"+design.n, ...
+    sprintf('pool_stage%d_R%d_M%d',stage,R,M));ensure(folder);
+lo=zeros(M,3,G);hi=lo;zero=zeros(M,G);ties=zero;
+streamSeed=20260922;streamStage=stage;
+if stage==13,streamSeed=20260923;streamStage=1;end
+for start=1:100:M
+    stop=min(start+99,M);name=fullfile(folder,sprintf('batch_%05d_%05d.mat',start,stop));
+    if isfile(name)
+        s=load(name);assert(s.start==start && s.stop==stop);
+    else
+        timer=tic;L=stop-start+1;
+        s=struct('start',start,'stop',stop,'lower',zeros(L,3,G),'upper',zeros(L,3,G), ...
+            'zero',zeros(L,G),'ties',zeros(L,G),'indices',zeros(L,R,'uint32'));
+        for trial=start:stop
+            j=trial-start+1;
+            stream=RandStream('Threefry',Seed=streamSeed);
+            stream.Substream=ops.key(design,streamStage,R,trial);
+            selected=randi(stream,size(pool,1),R,1);
+            q=pool(selected,idx);
+            out=tc_intervals_from_original(q,model.B,cfg.alpha, ...
+                ops.key(design,streamStage+1,R,trial),streamSeed);
+            s.lower(j,:,:)=out.lower;s.upper(j,:,:)=out.upper;
+            s.zero(j,:)=out.zero_bootstrap_variance;s.ties(j,:)=out.bootstrap_mean_ties;
+            s.indices(j,:)=uint32(selected.');
+        end
+        s.seconds=toc(timer);ops.save(name,s);
+    end
+    lo(start:stop,:,:)=s.lower;hi(start:stop,:,:)=s.upper;
+    zero(start:stop,:)=s.zero;ties(start:stop,:)=s.ties;
+    ops.status(root,struct('state','running','phase','finite_pool_coverage', ...
+        'model',model.name,'n',design.n,'R',R,'completed',stop,'target',M,'stage',stage));
+    fprintf('%s n=%d R=%d pool trials %d/%d\n',model.name,design.n,R,stop,M);
+end
+[gamma,kappa,v]=ops.moments(pool);coeff=ops.coefficients(model.B,cfg);
+methods=["Student t","percentile bootstrap","bootstrap-t"];rows=table();
+for prefix=prefixes
+    for m=1:3
+        lower=reshape(lo(1:prefix,m,:),prefix,[]);upper=reshape(hi(1:prefix,m,:),prefix,[]);
+        hits=sum(lower<=ref.density(idx) & upper>=ref.density(idx),1);
+        invalid=sum(~isfinite(lower)|~isfinite(upper),1);
+        cpLo=zeros(1,G);cpHi=ones(1,G);
+        a=hits>0;cpLo(a)=betaincinv(.025,hits(a),prefix-hits(a)+1);
+        a=hits<prefix;cpHi(a)=betaincinv(.975,hits(a)+1,prefix-hits(a));
+        baseline=.95;
+        if m>1,baseline=(ceil((model.B+1)*.975)-floor((model.B+1)*.025))/(model.B+1);end
+        pred=baseline+(coeff(m,1)+coeff(m,2)*kappa(idx)+coeff(m,3)*gamma(idx).^2)/R;
+        row=table(repmat(model.name,G,1),repmat(string(design.scheme),G,1), ...
+            repmat(methods(m),G,1),repmat(design.n,G,1),repmat(R,G,1), ...
+            repmat(model.B,G,1),repmat(prefix,G,1),grid.',hits.',hits.'/prefix, ...
+            cpLo.',cpHi.',pred.',invalid.',ref.density(idx).',ref.se(idx).', ...
+            sqrt(v(idx).'/R),mean(upper-lower,1).',repmat(size(pool,1),G,1), ...
+            repmat("finite_pool_conditional",G,1), ...
+            'VariableNames',{'model','scheme','method','n','R','B','M','y','hit_count', ...
+            'coverage','cp95_lower','cp95_upper','formula_prediction','interval_inf_count', ...
+            'truth','reference_se','outer_mean_se','mean_interval_length','P','experiment_type'});
+        rows=[rows;row]; %#ok<AGROW>
+    end
+end
+writetable(rows,fullfile(folder,'coverage.csv'));
+ops.save(fullfile(folder,'diagnostics.mat'),struct('zero_variance',zero,'ties',ties));
+end
+
+function ref=referenceOnGrid(model,old,source,root,ops,kind)
+file=fullfile(root,"reference_"+model.name,"reference_"+kind+".mat");
+if isfile(file),s=load(file,'ref');ref=s.ref;return;end
+files=dir(fullfile(source,"reference_"+model.name,'responses_*.mat'));
+total=zeros(size(model.y));sq=total;count=0;
+for k=1:numel(files)
+    s=load(fullfile(files(k).folder,files(k).name),'response');y=s.response;
+    for start=1:2048:numel(y)
+        ix=start:min(start+2047,numel(y));
+        K=exp(-.5*((model.y-y(ix))/model.h).^2)/(sqrt(2*pi)*model.h);
+        total=total+sum(K,1);sq=sq+sum(K.^2,1);
+    end
+    count=count+numel(y);
+end
+assert(count==old.N,'Reference response count mismatch');
+ref=old;ref.y=model.y;ref.density=total/count;
+ref.se=sqrt(max(sq-total.^2/count,0)/(count*(count-1)));
+ops.save(file,struct('ref',ref));
+end
+
+function T=auditPool(model,design,pool,ref)
+P=size(pool,1);mu=mean(pool,1);poolSE=std(pool,0,1)/sqrt(P);
+T=table(repmat(model.name,numel(mu),1),repmat(design.n,numel(mu),1),model.y.', ...
+    mu.',ref.density.',(mu-ref.density).',poolSE.',ref.se.', ...
+    'VariableNames',{'model','n','y','pool_mean','reference_density','difference','pool_mean_se','reference_se'});
+end
+
+function ensure(folder)
+if ~isfolder(folder),mkdir(folder);end
+end
+
+function copyVerified(source,target)
+if isfile(target)
+    assert(isequal(readBytes(source),readBytes(target)),'Existing copied input differs: %s',target);
+else
+    copyfile(source,target);
+    assert(isequal(readBytes(source),readBytes(target)),'Copy verification failed');
+end
+end
+
+function bytes=readBytes(path)
+fid=fopen(path,'rb');assert(fid>=0);cleanup=onCleanup(@()fclose(fid)); %#ok<NASGU>
+bytes=fread(fid,Inf,'*uint8');
+end

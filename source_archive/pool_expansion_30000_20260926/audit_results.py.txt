@@ -1,0 +1,147 @@
+"""Independent, read-only numerical checks followed by compact audit exports."""
+from pathlib import Path
+import hashlib
+import json
+import sys
+from datetime import datetime, timezone
+import numpy as np
+import pandas as pd
+from scipy.io import loadmat
+from scipy.stats import norm, beta, kstat
+
+ROOT = Path(__file__).resolve().parent
+REPO = ROOT.parent
+CODE = REPO / 'tc_recalculation_20260922'
+BASE = CODE / 'results/paper_scale_original_grid_20260922'
+
+
+def sha(p):
+    return hashlib.sha256(Path(p).read_bytes()).hexdigest()
+
+
+def previous_root(model):
+    if model == 'plate':
+        return REPO/'plate_pool_expansion_20260925/results'
+    return REPO/'beam_nonlinear_pool_expansion_20260925'/model/'results'
+
+
+def protect():
+    path = ROOT / 'protected_inputs.json'
+    if '--prepare' in sys.argv:
+        assert not path.exists()
+        record = json.loads((REPO/'beam_nonlinear_pool_expansion_20260925/protected_inputs.json').read_text())
+        for model in ['linear','nonlinear','plate']:
+            folder = previous_root(model)
+            audit = json.loads((folder/'audit_manifest.json').read_text())
+            assert audit['status'] == 'passed' and audit['P'] == 20000
+            assert sha(folder/'pool_complete.mat') == audit['pool_sha256']
+            for f in [folder/'pool_complete.mat',folder/'config.mat',folder/'comparison_summary.csv',folder/'audit_manifest.json']:
+                record[str(f.resolve())] = sha(f)
+        path.write_text(json.dumps(record, indent=2), encoding='utf-8')
+    record = json.loads(path.read_text())
+    for p, h in record.items():
+        assert sha(p) == h, f'Protected input changed: {p}'
+    return record
+
+
+def main():
+    protected = protect()
+    if '--prepare' in sys.argv:
+        print('Protected inputs verified:', len(protected)); return
+    model = sys.argv[1]
+    out = ROOT/model/'results'
+    cfg = loadmat(out/'config.mat', simplify_cells=True)['cfg']
+    pool = loadmat(out/'pool_complete.mat')['pool']
+    old = loadmat(previous_root(model)/'pool_complete.mat')['pool']
+    width = 201 if model == 'plate' else 226
+    assert pool.shape == (30000,width) and np.array_equal(pool[:20000],old)
+    assert np.isfinite(pool).all() and (pool >= 0).all()
+    chunks = []; shifts = []; expected = 20001
+    for f in sorted((out/'chunks').glob('curves_*.mat')):
+        a = loadmat(f,simplify_cells=True)
+        last = min(expected+31,30000)
+        assert a['first'] == expected and a['last'] == last
+        assert a['seed'] == cfg['shift_seed'] and a['substream'] == (expected-4097)//32+1
+        assert np.array_equal(a['q'],pool[expected-1:last])
+        assert a['shifts'].shape == (last-expected+1,10 if model=='plate' else 5)
+        shifts.append(a['shifts']); expected = last+1
+        chunks.append(dict(path=str(f),sha256=sha(f)))
+    assert expected == 30001 and len(chunks) == 313
+    previous_shifts = [loadmat(f)['shifts'] for f in sorted((previous_root(model)/'chunks').glob('curves_*.mat'))]
+    assert len(previous_shifts) == 497
+    assert len(np.unique(np.concatenate(previous_shifts+shifts),axis=0)) == 25904
+    assert not list(out.rglob('*.writing.mat'))
+    if model == 'linear':
+        truth = norm.pdf(cfg['coverage_grid'],scale=np.sqrt(1+cfg['h']**2))
+        assert np.allclose(truth,cfg['truth'],rtol=0,atol=1e-14)
+        assert not np.any(cfg['reference_se'])
+        idx = np.arange(201,226); ref_N = 'analytic'
+    elif model == 'nonlinear':
+        ref = loadmat(CODE/'results/reference_expansion_10x_20260923/nonlinear/reference_N20000000.mat',simplify_cells=True)
+        assert np.array_equal(ref['density'],cfg['truth']) and ref['N'] == cfg['reference_N'] == 20000000
+        truth = ref['density']; idx = np.arange(201,226); ref_N = 20000000
+    else:
+        ref = loadmat(REPO/'reference_expansion_2m_20260925/results/reference.mat',simplify_cells=True)
+        idx = abs(cfg['coverage_grid'][:,None]-ref['grid'][None,:]).argmin(axis=1)
+        assert max(abs(cfg['coverage_grid']-ref['grid'][idx])) < 1e-16
+        truth = ref['density'][idx]; ref_N = 2097152
+    co = pd.read_csv(CODE/'raw_percentile_finiteB_coefficients.csv')
+    summary = []; files = []
+    for P in [30000]:
+        x = pool[:P,idx]; v = kstat(x,2,axis=0)
+        g = kstat(x,3,axis=0)/v**1.5; k = kstat(x,4,axis=0)/v**2
+        rows = pd.read_csv(out/f'P{P}/nested_M_pointwise_coverage.csv')
+        assert len(rows) == 150
+        for R in map(int, cfg['R']):
+            batches = []
+            for f in sorted((out/f'P{P}/R{R}').glob('batch_*.mat')):
+                a = loadmat(f, simplify_cells=True)
+                assert a['first'] == 100*len(batches)+1 and a['R'] == R and a['P'] == P
+                batches.append(a)
+            assert len(batches) == 50
+            lo = np.concatenate([a['lower'] for a in batches]); hi = np.concatenate([a['upper'] for a in batches])
+            assert lo.shape == hi.shape == (5000,3,25) and np.all(lo <= hi)
+            hits = ((lo <= truth) & (truth <= hi)).sum(axis=0)
+            for j, method in enumerate(['Student t','percentile bootstrap','bootstrap-t']):
+                d = rows[(rows.R==R)&(rows.method==method)].sort_values('y')
+                c = co[(co.B==int(cfg['B']))&(co.method==('t distribution' if j==0 else method))].set_index('coefficient').value
+                pred = .95+(c.A0+c.A4*k+c.A33*g*g)/R
+                counts = hits[j]; cov = counts/5000
+                assert np.array_equal(counts,d.hit_count) and np.allclose(cov,d.coverage,rtol=0,atol=1e-14)
+                assert np.allclose(pred,d.formula_prediction,rtol=0,atol=1e-10)
+                assert np.allclose(np.where(counts==0,0,beta.ppf(.025,counts,5001-counts)),d.cp95_lower)
+                assert np.allclose(np.where(counts==5000,1,beta.ppf(.975,counts+1,5000-counts)),d.cp95_upper)
+                summary.append(dict(model=model,P=P,R=R,method=method,mean_coverage=cov.mean(),
+                                    rmse=np.sqrt(np.mean((cov-pred)**2)),
+                                    max_pool_offset_over_outer_se=np.max(abs(x.mean(axis=0)-truth)/np.sqrt(v/R))))
+        if '--figures' in sys.argv:
+            import pymupdf as fitz
+            f = out/f'P{P}/figures_paper_style/{model}_nested_M_M5000_paper_style.pdf'
+            with fitz.open(f) as doc:
+                assert len(doc)==1 and not doc[0].get_images()
+            files.append(dict(path=str(f),sha256=sha(f)))
+    previous = pd.read_csv(previous_root(model)/'comparison_summary.csv')
+    previous['model'] = model
+    previous = previous.rename(columns={'max_abs_target_offset_over_outer_se':'max_pool_offset_over_outer_se'})
+    current = pd.DataFrame(summary)
+    combined = pd.concat([previous[current.columns],current],ignore_index=True)
+    combined.to_csv(out/'comparison_summary.csv',index=False)
+    x = pool[:,:201]; v = kstat(x,2,axis=0)
+    g = kstat(x,3,axis=0)/v**1.5; k = kstat(x,4,axis=0)/v**2
+    density = x.mean(axis=0); core = density >= .05*density.max()
+    rec = pd.read_csv(out/'recommended_R.csv')
+    for method in ['t distribution','percentile bootstrap','bootstrap-t']:
+        c = co[(co.B==int(cfg['B']))&(co.method==method)].set_index('coefficient').value
+        lam = abs(c.A0)+abs(c.A4)*max(abs(k[core]))+abs(c.A33)*max(abs(g[core]))**2
+        row = rec[rec.method==method].iloc[0]
+        assert abs(row.Lambda-lam) < 1e-9 and row.recommended_R == max(16,np.ceil(lam/.01))
+    report = dict(status='passed',model=model,P=30000,retained=20000,centering=False,reference_N=ref_N,
+                  checked_at=datetime.now(timezone.utc).isoformat(),pool_sha256=sha(out/'pool_complete.mat'),
+                  source_hashes=protected,chunks=chunks,figures=files,manual_visual_review_pending=True)
+    (out/'audit_manifest.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
+    print(pd.DataFrame(summary).to_string(index=False))
+    print('PASS:',model)
+
+
+if __name__ == '__main__':
+    main()

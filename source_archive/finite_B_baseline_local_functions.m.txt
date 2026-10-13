@@ -1,0 +1,41 @@
+function output = localRunFiniteB(cfg)
+outDir = fullfile(cfg.results_root, "E1_finite_B_rank_audit");
+dpimnumeric.ensureDir(outDir);
+BList = unique([cfg.B, 99, 199, 399, 999, 1999]);
+Msim = max(1000, cfg.M * 20);
+rng(cfg.seed + 101, "twister");
+rows = table();
+for i = 1:numel(BList)
+    B = BList(i);
+    kMinus = floor((cfg.alpha / 2) * (B + 1));
+    kPlus = ceil((1 - cfg.alpha / 2) * (B + 1));
+    C0B = (kPlus - kMinus) / (B + 1);
+    sim = localSimulateFiniteBOrderStatisticCoverage(B, kMinus, kPlus, Msim);
+    coverage = mean(sim);
+    se = sqrt(max(coverage * (1 - coverage), realmin) / Msim);
+    rows = [rows; table("E1_finite_B_rank_audit", B, kMinus, kPlus, C0B, ...
+        coverage, coverage - cfg.nominal, abs(coverage - C0B), 1.96 * se, Msim, ...
+        'VariableNames', {'experiment','B','k_minus','k_plus','C0B', ...
+        'simulated_coverage','coverage_error_vs_nominal','simulation_error_vs_C0B', ...
+        'simulation_ci_half_width_95','simulation_count'})]; %#ok<AGROW>
+end
+writetable(rows, fullfile(outDir, "summary.csv"));
+save(fullfile(outDir, "raw_results.mat"), "rows", "cfg", "-v7.3");
+output = struct("output_dir", outDir, "summary_csv", fullfile(outDir, "summary.csv"));
+end
+
+function hit = localSimulateFiniteBOrderStatisticCoverage(B, kMinus, kPlus, Msim)
+% Independently simulate a true Uniform pivot and B bootstrap pivots.
+% The event U_(kMinus) <= U0 <= U_(kPlus) is equivalent to the rank of U0
+% among the B+1 IID uniforms lying in {kMinus+1, ..., kPlus}.
+hit = false(Msim, 1);
+chunkSize = min(Msim, 1000);
+for first = 1:chunkSize:Msim
+    last = min(Msim, first + chunkSize - 1);
+    count = last - first + 1;
+    u0 = rand(count, 1);
+    bootstrapPivots = rand(count, B);
+    trueRank = 1 + sum(bootstrapPivots < u0, 2);
+    hit(first:last) = trueRank >= (kMinus + 1) & trueRank <= kPlus;
+end
+end

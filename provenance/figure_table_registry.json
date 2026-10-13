@@ -1,0 +1,548 @@
+{
+  "schema_version": 2,
+  "assembled_utc": "2026-10-13T01:44:56.3926577Z",
+  "release_mode": "code_only_no_data_distribution",
+  "validation": {
+    "plots_run": false,
+    "matlab_run": false,
+    "numerical_experiments_run": false,
+    "tests_run": false,
+    "pdf_visual_comparison_run": false,
+    "numerical_figures_with_historical_sources": 11,
+    "static_figures_with_sources": 6,
+    "expected_pdfs_distributed": 0,
+    "data_files_distributed": 0,
+    "this_revision": "Documentation/provenance edit only; no plotting, MATLAB, experiments, or tests executed"
+  },
+  "codecomplete_policy": "false means no fresh execution/equivalence claim; it does not mean all source files are missing",
+  "data_scope": "No numerical inputs, CSV results, reference densities, interval endpoints, curve slices, raw pools, or PDF assets are distributed. All required numerical inputs must be supplied by the user.",
+  "figures": [
+    {
+      "id": "Fig03",
+      "filename": "Fig03_Euler_coverage_formula_M30000.pdf",
+      "group": "numerical_coverage",
+      "expected": "expected/Fig03_Euler_coverage_formula_M30000.pdf",
+      "sources": [
+        "plotting/matlab/plot_nested_M_paper_style.m",
+        "plotting/matlab/replay_matlab.m"
+      ],
+      "inputs": [
+        "coverage.csv"
+      ],
+      "command": "addpath('plotting/matlab'); replay_matlab('<user-data-dir>','outputs/matlab_figures');",
+      "codecomplete": false,
+      "status": "source_available_external_data_required_unexecuted",
+      "current_pdf_equivalence": "not_checked_in_this_release",
+      "notes": "M30000 fresh independent primary; not Euler pool control",
+      "manuscript_figure_number": 6,
+      "expected_distributed": false,
+      "expected_role": "optional_user_supplied_comparison_reference",
+      "inputs_distributed": false,
+      "external_numerical_inputs_required": true
+    },
+    {
+      "id": "Fig08",
+      "filename": "Fig08_plate_coverage_formula_M30000.pdf",
+      "group": "numerical_coverage",
+      "expected": "expected/Fig08_plate_coverage_formula_M30000.pdf",
+      "sources": [
+        "plotting/matlab/plot_nested_M_paper_style.m",
+        "plotting/matlab/replay_matlab.m"
+      ],
+      "inputs": [
+        "coverage.csv"
+      ],
+      "command": "addpath('plotting/matlab'); replay_matlab('<user-data-dir>','outputs/matlab_figures');",
+      "codecomplete": false,
+      "status": "source_available_external_data_required_unexecuted",
+      "current_pdf_equivalence": "not_checked_in_this_release",
+      "notes": "P30000/M30000 conditional pool experiment",
+      "manuscript_figure_number": 11,
+      "expected_distributed": false,
+      "expected_role": "optional_user_supplied_comparison_reference",
+      "inputs_distributed": false,
+      "external_numerical_inputs_required": true
+    },
+    {
+      "id": "Fig10",
+      "filename": "Fig10_nonlinear_coverage_formula_M50000.pdf",
+      "group": "numerical_coverage",
+      "expected": "expected/Fig10_nonlinear_coverage_formula_M50000.pdf",
+      "sources": [
+        "plotting/matlab/plot_nested_M_paper_style.m",
+        "plotting/matlab/replay_matlab.m"
+      ],
+      "inputs": [
+        "coverage.csv"
+      ],
+      "command": "addpath('plotting/matlab'); replay_matlab('<user-data-dir>','outputs/matlab_figures');",
+      "codecomplete": false,
+      "status": "source_available_external_data_required_unexecuted",
+      "current_pdf_equivalence": "not_checked_in_this_release",
+      "notes": "P50000/M50000; final reference_N500000000; old nonlinear rows excluded",
+      "manuscript_figure_number": 14,
+      "expected_distributed": false,
+      "expected_role": "optional_user_supplied_comparison_reference",
+      "inputs_distributed": false,
+      "external_numerical_inputs_required": true
+    },
+    {
+      "id": "Fig03b",
+      "filename": "Fig03b_Euler_core_tail_mechanism.pdf",
+      "group": "numerical_mechanism",
+      "expected": "expected/Fig03b_Euler_core_tail_mechanism.pdf",
+      "sources": [
+        "plotting/historicalproduction.py",
+        "plotting/plot_nonlinear_real_data_mechanism.py",
+        "plotting/plot_linear_plate_real_data_mechanisms.py",
+        "plotting/labels.py",
+        "plotting/spacing.py",
+        "plotting/current_labels.py"
+      ],
+      "inputs": [
+        "coverage.csv",
+        "reference_linear.csv"
+      ],
+      "command": "python plotting/historicalproduction.py --kind python --data-dir <user-data-dir> --output-dir outputs/python_figures",
+      "codecomplete": false,
+      "status": "source_available_external_data_required_unexecuted",
+      "current_pdf_equivalence": "not_checked_in_this_release",
+      "notes": "Approved lowercase pdf axis, full method names and separator-spacing adapter; no changed numerical arrays intended; not executed",
+      "manuscript_figure_number": 7,
+      "expected_distributed": false,
+      "expected_role": "optional_user_supplied_comparison_reference",
+      "inputs_distributed": false,
+      "external_numerical_inputs_required": true
+    },
+    {
+      "id": "Fig08b",
+      "filename": "Fig08b_plate_core_tail_mechanism.pdf",
+      "group": "numerical_mechanism",
+      "expected": "expected/Fig08b_plate_core_tail_mechanism.pdf",
+      "sources": [
+        "plotting/historicalproduction.py",
+        "plotting/plot_nonlinear_real_data_mechanism.py",
+        "plotting/plot_linear_plate_real_data_mechanisms.py",
+        "plotting/labels.py",
+        "plotting/spacing.py",
+        "plotting/current_labels.py"
+      ],
+      "inputs": [
+        "coverage.csv",
+        "reference_plate.csv"
+      ],
+      "command": "python plotting/historicalproduction.py --kind python --data-dir <user-data-dir> --output-dir outputs/python_figures",
+      "codecomplete": false,
+      "status": "source_available_external_data_required_unexecuted",
+      "current_pdf_equivalence": "not_checked_in_this_release",
+      "notes": "Approved lowercase pdf axis, full method names and separator-spacing adapter; no changed numerical arrays intended; not executed",
+      "manuscript_figure_number": 12,
+      "expected_distributed": false,
+      "expected_role": "optional_user_supplied_comparison_reference",
+      "inputs_distributed": false,
+      "external_numerical_inputs_required": true
+    },
+    {
+      "id": "Fig10b",
+      "filename": "Fig10b_nonlinear_core_tail_mechanism.pdf",
+      "group": "numerical_mechanism",
+      "expected": "expected/Fig10b_nonlinear_core_tail_mechanism.pdf",
+      "sources": [
+        "plotting/historicalproduction.py",
+        "plotting/plot_nonlinear_real_data_mechanism.py",
+        "plotting/labels.py",
+        "plotting/spacing.py",
+        "plotting/current_labels.py"
+      ],
+      "inputs": [
+        "coverage.csv",
+        "reference_nonlinear_density.csv"
+      ],
+      "command": "python plotting/historicalproduction.py --kind python --data-dir <user-data-dir> --output-dir outputs/python_figures",
+      "codecomplete": false,
+      "status": "source_available_external_data_required_unexecuted",
+      "current_pdf_equivalence": "not_checked_in_this_release",
+      "notes": "Approved lowercase pdf axis, full method names and separator-spacing adapter; no changed numerical arrays intended; not executed",
+      "manuscript_figure_number": 15,
+      "expected_distributed": false,
+      "expected_role": "optional_user_supplied_comparison_reference",
+      "inputs_distributed": false,
+      "external_numerical_inputs_required": true
+    },
+    {
+      "id": "Fig04",
+      "filename": "Fig04_Euler_internal_sample_size.pdf",
+      "group": "numerical_internal_n",
+      "expected": "expected/Fig04_Euler_internal_sample_size.pdf",
+      "sources": [
+        "plotting/historicalproduction.py",
+        "plotting/internal_n.py",
+        "plotting/labels.py"
+      ],
+      "inputs": [
+        "internal_n.csv"
+      ],
+      "command": "python plotting/historicalproduction.py --kind python --data-dir <user-data-dir> --output-dir outputs/python_figures",
+      "codecomplete": false,
+      "status": "source_available_external_data_required_unexecuted",
+      "current_pdf_equivalence": "not_checked_in_this_release",
+      "notes": "n192/384/768, P=M30000, R128, B399; only original plot functions, no historical main",
+      "manuscript_figure_number": 8,
+      "expected_distributed": false,
+      "expected_role": "optional_user_supplied_comparison_reference",
+      "inputs_distributed": false,
+      "external_numerical_inputs_required": true
+    },
+    {
+      "id": "Fig11",
+      "filename": "Fig11_nonlinear_internal_sample_size.pdf",
+      "group": "numerical_internal_n",
+      "expected": "expected/Fig11_nonlinear_internal_sample_size.pdf",
+      "sources": [
+        "plotting/historicalproduction.py",
+        "plotting/internal_n.py",
+        "plotting/labels.py"
+      ],
+      "inputs": [
+        "internal_n.csv"
+      ],
+      "command": "python plotting/historicalproduction.py --kind python --data-dir <user-data-dir> --output-dir outputs/python_figures",
+      "codecomplete": false,
+      "status": "source_available_external_data_required_unexecuted",
+      "current_pdf_equivalence": "not_checked_in_this_release",
+      "notes": "n192/384/768, P=M30000, R128, B399; only original plot functions, no historical main",
+      "manuscript_figure_number": 16,
+      "expected_distributed": false,
+      "expected_role": "optional_user_supplied_comparison_reference",
+      "inputs_distributed": false,
+      "external_numerical_inputs_required": true
+    },
+    {
+      "id": "Fig05",
+      "filename": "Fig05_Euler_recommended_R_intervals_MC_RQMC.pdf",
+      "group": "numerical_interval",
+      "expected": "expected/Fig05_Euler_recommended_R_intervals_MC_RQMC.pdf",
+      "sources": [
+        "plotting/matlab/plot_intervals_pdf_label_only.m",
+        "plotting/matlab/replay_matlab.m"
+      ],
+      "inputs": [
+        "intervals_linear_nonlinear.csv"
+      ],
+      "command": "addpath('plotting/matlab'); replay_matlab('<user-data-dir>','outputs/matlab_figures');",
+      "codecomplete": false,
+      "status": "source_available_external_data_required_unexecuted",
+      "current_pdf_equivalence": "not_checked_in_this_release",
+      "notes": "Required external input: archived independently generated interval endpoints. Original circular local windows, viewport masks and pdf label are preserved in code. For nonlinear, use the final500M reference with the original endpoints; no regeneration is claimed.",
+      "manuscript_figure_number": 9,
+      "expected_distributed": false,
+      "expected_role": "optional_user_supplied_comparison_reference",
+      "inputs_distributed": false,
+      "external_numerical_inputs_required": true
+    },
+    {
+      "id": "Fig09",
+      "filename": "Fig09_plate_recommended_R_intervals_MC_RQMC.pdf",
+      "group": "numerical_interval",
+      "expected": "expected/Fig09_plate_recommended_R_intervals_MC_RQMC.pdf",
+      "sources": [
+        "plotting/matlab/plot_intervals_pdf_label_only.m",
+        "plotting/matlab/replay_matlab.m"
+      ],
+      "inputs": [
+        "intervals_plate.csv"
+      ],
+      "command": "addpath('plotting/matlab'); replay_matlab('<user-data-dir>','outputs/matlab_figures');",
+      "codecomplete": false,
+      "status": "source_available_external_data_required_unexecuted",
+      "current_pdf_equivalence": "not_checked_in_this_release",
+      "notes": "Required external input: archived independently generated interval endpoints. Original circular local windows, viewport masks and pdf label are preserved in code. For nonlinear, use the final500M reference with the original endpoints; no regeneration is claimed.",
+      "manuscript_figure_number": 13,
+      "expected_distributed": false,
+      "expected_role": "optional_user_supplied_comparison_reference",
+      "inputs_distributed": false,
+      "external_numerical_inputs_required": true
+    },
+    {
+      "id": "Fig12",
+      "filename": "Fig12_nonlinear_recommended_R_intervals_MC_RQMC.pdf",
+      "group": "numerical_interval",
+      "expected": "expected/Fig12_nonlinear_recommended_R_intervals_MC_RQMC.pdf",
+      "sources": [
+        "plotting/matlab/plot_intervals_pdf_label_only.m",
+        "plotting/matlab/replay_matlab.m"
+      ],
+      "inputs": [
+        "intervals_linear_nonlinear.csv"
+      ],
+      "command": "addpath('plotting/matlab'); replay_matlab('<user-data-dir>','outputs/matlab_figures');",
+      "codecomplete": false,
+      "status": "source_available_external_data_required_unexecuted",
+      "current_pdf_equivalence": "not_checked_in_this_release",
+      "notes": "Required external input: archived independently generated interval endpoints. Original circular local windows, viewport masks and pdf label are preserved in code. For nonlinear, use the final500M reference with the original endpoints; no regeneration is claimed.",
+      "manuscript_figure_number": 17,
+      "expected_distributed": false,
+      "expected_role": "optional_user_supplied_comparison_reference",
+      "inputs_distributed": false,
+      "external_numerical_inputs_required": true
+    },
+    {
+      "id": "Fig01a",
+      "filename": "Fig01a_DPIM_probability_transport.pdf",
+      "group": "static",
+      "expected": "expected/Fig01a_DPIM_probability_transport.pdf",
+      "sources": [
+        "plotting/historicalproduction.py",
+        "plotting/static/draw_transport.py"
+      ],
+      "inputs": [],
+      "command": "python plotting/historicalproduction.py --kind transport --output-dir outputs/transport",
+      "codecomplete": false,
+      "status": "source_available_unexecuted",
+      "current_pdf_equivalence": "not_checked_in_this_release",
+      "notes": "Original illustrative geometry, current pdf label; no small external dataset required.",
+      "manuscript_figure_number": 1,
+      "expected_distributed": false,
+      "expected_role": "optional_user_supplied_comparison_reference",
+      "inputs_distributed": false,
+      "external_numerical_inputs_required": false
+    },
+    {
+      "id": "Fig02",
+      "filename": "Fig02_Euler_beam_model.pdf",
+      "group": "static",
+      "expected": "expected/Fig02_Euler_beam_model.pdf",
+      "sources": [
+        "plotting/historicalproduction.py",
+        "plotting/static/euler_model.tex"
+      ],
+      "inputs": [],
+      "command": "python plotting/historicalproduction.py --kind euler --output-dir outputs/euler",
+      "codecomplete": false,
+      "status": "source_available_unexecuted",
+      "current_pdf_equivalence": "not_checked_in_this_release",
+      "notes": "Original standalone TikZ source. Requires external pdflatex and packages.",
+      "manuscript_figure_number": 5,
+      "expected_distributed": false,
+      "expected_role": "optional_user_supplied_comparison_reference",
+      "inputs_distributed": false,
+      "external_numerical_inputs_required": false
+    },
+    {
+      "id": "Fig06",
+      "filename": "Fig06_Kirchhoff_plate_model.pdf",
+      "group": "static",
+      "expected": "expected/Fig06_Kirchhoff_plate_model.pdf",
+      "sources": [
+        "plotting/historicalproduction.py",
+        "plotting/static/draw_plate.py"
+      ],
+      "inputs": [],
+      "command": "python plotting/historicalproduction.py --kind plate --output-dir outputs/plate",
+      "codecomplete": false,
+      "status": "source_available_unexecuted",
+      "current_pdf_equivalence": "not_checked_in_this_release",
+      "notes": "Original ReportLab vector drawing. Raster preview removed; no external data required.",
+      "manuscript_figure_number": 10,
+      "expected_distributed": false,
+      "expected_role": "optional_user_supplied_comparison_reference",
+      "inputs_distributed": false,
+      "external_numerical_inputs_required": false
+    },
+    {
+      "id": "random_shift",
+      "filename": "DPIM_random_shift_response_density_mechanism.pdf",
+      "group": "static",
+      "expected": "expected/DPIM_random_shift_response_density_mechanism.pdf",
+      "sources": [
+        "plotting/historicalproduction.py",
+        "plotting/static/shift_layout.py",
+        "plotting/static/shift_geometry.py",
+        "plotting/static/method_geometry.py"
+      ],
+      "inputs": [],
+      "command": "python plotting/historicalproduction.py --kind shift --output-dir outputs/shift",
+      "codecomplete": false,
+      "status": "source_available_unexecuted",
+      "current_pdf_equivalence": "not_checked_in_this_release",
+      "notes": "Latest historical mechanism_arrow_tips correction included, not only early v6. TeX/PGF and font environment not verified.",
+      "manuscript_figure_number": 3,
+      "expected_distributed": false,
+      "expected_role": "optional_user_supplied_comparison_reference",
+      "inputs_distributed": false,
+      "external_numerical_inputs_required": false
+    },
+    {
+      "id": "framework",
+      "filename": "DPIM_unified_statistical_framework.pdf",
+      "group": "static",
+      "expected": "expected/DPIM_unified_statistical_framework.pdf",
+      "sources": [
+        "plotting/historicalproduction.py",
+        "plotting/static/framework_layout.py",
+        "plotting/static/framework_geometry.py",
+        "plotting/static/method_geometry.py"
+      ],
+      "inputs": [],
+      "command": "python plotting/historicalproduction.py --kind framework --output-dir outputs/framework",
+      "codecomplete": false,
+      "status": "source_available_unexecuted",
+      "current_pdf_equivalence": "not_checked_in_this_release",
+      "notes": "Historical module spacing/formula correction included. Exact current PDF export lineage/equivalence remains unverified.",
+      "manuscript_figure_number": 4,
+      "expected_distributed": false,
+      "expected_role": "optional_user_supplied_comparison_reference",
+      "inputs_distributed": false,
+      "external_numerical_inputs_required": false
+    },
+    {
+      "id": "Fig01b",
+      "filename": "Fig01b_outer_sample_workflow.pdf",
+      "group": "static",
+      "expected": "expected/Fig01b_outer_sample_workflow.pdf",
+      "sources": [
+        "plotting/historicalproduction.py",
+        "plotting/static/outer_workflow.py",
+        "plotting/static/outer_overlay.tex"
+      ],
+      "inputs": [
+        "outer_workflow_curves.csv",
+        "reference_linear.csv"
+      ],
+      "command": "python plotting/historicalproduction.py --kind outer --data-dir <user-data-dir> --output-dir outputs/outer --font-roman <local-times-roman.ttf> --font-italic <local-times-italic.ttf>",
+      "codecomplete": false,
+      "status": "source_chain_partial_external_data_required_current_overlay_unverified",
+      "current_pdf_equivalence": "not_checked_in_this_release",
+      "notes": "PARTIAL CHAIN: historical renderer and later current-label TeX overlay are supplied, but the first256 real pilot ordinates and density grid must be supplied externally. Background/overlay equivalence and final export remain unverified. No PDF or data asset is distributed.",
+      "manuscript_figure_number": 2,
+      "expected_distributed": false,
+      "expected_role": "optional_user_supplied_comparison_reference",
+      "inputs_distributed": false,
+      "external_numerical_inputs_required": true
+    }
+  ],
+  "tables": [
+    {
+      "id": "linear_first_trial_endpoints",
+      "sources": [
+        "plotting/tables.py",
+        "plotting/historicalproduction.py"
+      ],
+      "inputs": [
+        "table_interval_values.csv"
+      ],
+      "output": "linear_interval_endpoints.tex",
+      "command": "python plotting/historicalproduction.py --kind tables --data-dir <user-data-dir> --output-dir outputs/tables",
+      "rows": 42,
+      "trial": 1,
+      "status": "formatter_available_external_126_row_csv_required_unexecuted",
+      "notes": "No CSV or table values are distributed. Seven archived locations, two R values, three methods per model. Not a new experiment and not the recommended-R decision table.",
+      "inputs_distributed": false,
+      "external_numerical_inputs_required": true
+    },
+    {
+      "id": "plate_first_trial_endpoints",
+      "sources": [
+        "plotting/tables.py",
+        "plotting/historicalproduction.py"
+      ],
+      "inputs": [
+        "table_interval_values.csv"
+      ],
+      "output": "plate_interval_endpoints.tex",
+      "command": "python plotting/historicalproduction.py --kind tables --data-dir <user-data-dir> --output-dir outputs/tables",
+      "rows": 42,
+      "trial": 1,
+      "status": "formatter_available_external_126_row_csv_required_unexecuted",
+      "notes": "No CSV or table values are distributed. Seven archived locations, two R values, three methods per model. Not a new experiment and not the recommended-R decision table.",
+      "inputs_distributed": false,
+      "external_numerical_inputs_required": true
+    },
+    {
+      "id": "nonlinear_first_trial_endpoints",
+      "sources": [
+        "plotting/tables.py",
+        "plotting/historicalproduction.py"
+      ],
+      "inputs": [
+        "table_interval_values.csv"
+      ],
+      "output": "nonlinear_interval_endpoints.tex",
+      "command": "python plotting/historicalproduction.py --kind tables --data-dir <user-data-dir> --output-dir outputs/tables",
+      "rows": 42,
+      "trial": 1,
+      "status": "formatter_available_external_126_row_csv_required_unexecuted",
+      "notes": "No CSV or table values are distributed. Seven archived locations, two R values, three methods per model. Not a new experiment and not the recommended-R decision table.",
+      "inputs_distributed": false,
+      "external_numerical_inputs_required": true
+    },
+    {
+      "id": "recommended_R",
+      "sources": [
+        "plotting/prepare_publication.py"
+      ],
+      "inputs": [
+        "recommended_R.csv"
+      ],
+      "status": "historical_preparation_source_available_external_data_required",
+      "notes": "No CSV or table values are distributed. Nonlinear RQMC P50000 recommendation replaces P30000; MC remains P30000. Exported endpoint tables instead use table_interval_values.csv.",
+      "inputs_distributed": false,
+      "external_numerical_inputs_required": true
+    },
+    {
+      "id": "finite_B_rank_baseline",
+      "sources": [
+        "plotting/prepare_publication.py"
+      ],
+      "inputs": [
+        "finite_B_summary.csv",
+        "finite_B_summary_paper_signed_difference.csv"
+      ],
+      "status": "historical_preparation_source_available_external_data_required",
+      "notes": "No CSV or table values are distributed. Historical simulated coverage and rank-baseline summaries, not rerun here.",
+      "inputs_distributed": false,
+      "external_numerical_inputs_required": true
+    },
+    {
+      "id": "coverage_summary",
+      "sources": [
+        "plotting/prepare_publication.py"
+      ],
+      "inputs": [
+        "coverage_summary.csv",
+        "euler_pool_control.csv",
+        "coverage.csv"
+      ],
+      "status": "historical_preparation_source_available_external_data_required",
+      "notes": "No CSV or table values are distributed. Historical primary/control distinctions preserved; old nonlinear M30000 and 100M-reference summaries excluded.",
+      "inputs_distributed": false,
+      "external_numerical_inputs_required": true
+    }
+  ],
+  "dependencies": {
+    "python_numerical": [
+      "numpy",
+      "pandas",
+      "matplotlib"
+    ],
+    "matlab": [
+      "MATLAB (historical R2026a; adapted plotting subset untested)"
+    ],
+    "static": [
+      "reportlab",
+      "numpy",
+      "matplotlib",
+      "external TeX/PGF/TikZ",
+      "user-installed production fonts"
+    ],
+    "maintenance_only": [
+      "scipy only for optional local extraction from a user-owned archive; no pilot slice is distributed"
+    ],
+    "excluded_runtime": [
+      "PyMuPDF",
+      "AGPL preview/QA integrations"
+    ]
+  },
+  "input_path_policy": "Every inputs entry is a filename relative to the user-selected external data directory. No data/publication directory is supplied. Pass --data-dir or the MATLAB dataDir argument explicitly.",
+  "expected_path_policy": "Every expected entry is an optional comparison PDF relative to a user-supplied external reference directory. These are filename requirements only, not packaged assets or render inputs. No PDF hashes are published."
+}

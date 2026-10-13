@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+outputs/
+build/
+dist/
+*.egg-info/
+*.log
+*.asv
+*.aux
+*.out
+*.synctex.gz
+.DS_Store
+Thumbs.db

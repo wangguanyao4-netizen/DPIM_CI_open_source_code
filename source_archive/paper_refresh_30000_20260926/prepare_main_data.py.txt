@@ -1,0 +1,116 @@
+"""Build the full dependency inventory and stage verified main-pool data."""
+from pathlib import Path
+from datetime import datetime, timezone
+import hashlib
+import json
+import re
+import numpy as np
+import pandas as pd
+from scipy.io import loadmat
+from scipy.stats import norm
+
+ROOT=Path(__file__).resolve().parent
+REPO=ROOT.parent
+SOURCE=REPO/'deliverables/dpim_calculation_wording_20260925/compile_package'
+DATA=ROOT/'publication_data'
+CODE=REPO/'tc_recalculation_20260922'
+
+
+def sha(p):
+    return hashlib.sha256(p.read_bytes()).hexdigest()
+
+
+def main():
+    DATA.mkdir(exist_ok=True)
+    frames=[];input_records={}
+    for model in ['linear','nonlinear','plate']:
+        folder=REPO/'pool_expansion_30000_20260926'/model/'results'
+        audit=json.loads((folder/'audit_manifest.json').read_text())
+        assert audit['status']=='passed' and audit['P']==30000
+        path=folder/'P30000/nested_M_pointwise_coverage.csv'
+        frame=pd.read_csv(path);assert len(frame)==150 and (frame.P==30000).all()
+        frames.append(frame);input_records[str(path)]=sha(path)
+        if model=='plate':
+            f=REPO/'reference_expansion_2m_20260925/results/reference.mat';ref=loadmat(f,simplify_cells=True)
+            grid=ref['grid'];density=ref['density'];se=ref['se'];N=2097152
+        elif model=='nonlinear':
+            f=CODE/'results/manuscript_selected_20260923/reference_nonlinear/reference_grids.mat';ref=loadmat(f,simplify_cells=True)
+            assert ref['N']==20000000
+            grid=ref['grid201'];density=ref['d201'];se=ref['s201'];N=20000000
+        else:
+            f=CODE/'results/paper_scale_original_grid_20260922/reference_linear/reference.mat'
+            ref=loadmat(f,simplify_cells=True)['ref'];grid=ref['y'];density=norm.pdf(grid,scale=np.sqrt(1+ref['h']**2));se=np.zeros_like(grid);N='analytic'
+        d=DATA/f'reference_{model}';d.mkdir(exist_ok=True)
+        pd.DataFrame(dict(y=grid,reference_density=density,reference_se=se)).to_csv(d/'reference_density.csv',index=False)
+        input_records[str(f)]=sha(f)
+    pool=pd.concat(frames,ignore_index=True);pool.to_csv(DATA/'all_pool_coverage.csv',index=False)
+    # Preserve genuine independent Euler trials, changing only the formula's
+    # preliminary moment estimates. The finite-pool comparison is separate.
+    old=REPO/'deliverables/euler_analytic_full_manuscript_20260923/data/nested_M_pointwise_coverage.csv'
+    fresh=pd.read_csv(old);fresh=fresh[(fresh.model=='linear')&(fresh.M==5000)].copy();assert len(fresh)==150
+    assert np.allclose(fresh.truth,norm.pdf(fresh.y,scale=np.sqrt(1+.08**2)),rtol=0,atol=1e-14)
+    theory=pool[pool.model=='linear'][['method','R','y','formula_prediction','outer_mean_se']]
+    for col in ['formula_prediction','outer_mean_se']:fresh=fresh.drop(columns=[col])
+    fresh=fresh.merge(theory,on=['method','R','y'],validate='one_to_one');assert len(fresh)==150
+    fresh['preliminary_P']=30000;fresh['P']=np.nan;fresh['experiment_type']='fresh_independent'
+    # Independently recount archived fresh-trial endpoints using analytical truth.
+    archive=CODE/'results/euler_target_pool_separation_20260923'
+    hits={32:np.zeros((3,25),dtype=int),128:np.zeros((3,25),dtype=int)}
+    files=sorted(archive.glob('batch_*.mat'));assert len(files)==100
+    grid=np.sort(fresh.y.unique());truth=norm.pdf(grid,scale=np.sqrt(1+.08**2))
+    for f in files:
+        a=loadmat(f,variable_names=['lower','upper','first','last'],simplify_cells=True)
+        for j,R in enumerate([32,128]):
+            hits[R]+=((a['lower'][:,j]<=truth)&(truth<=a['upper'][:,j])).sum(axis=0)
+    for R in [32,128]:
+        for j,method in enumerate(['Student t','percentile bootstrap','bootstrap-t']):
+            d=fresh[(fresh.R==R)&(fresh.method==method)].sort_values('y')
+            assert np.array_equal(hits[R][j],d.hit_count)
+    fresh.to_csv(DATA/'euler_fresh_coverage_updated_moments.csv',index=False)
+    input_records[str(old)]=sha(old)
+    primary=pd.concat([fresh,pool[pool.model!='linear']],ignore_index=True)
+    primary.to_csv(DATA/'nested_M_pointwise_coverage.csv',index=False)
+    summaries=[]
+    for label,df in [('main',primary),('pool',pool)]:
+        for (model,method,R),d in df.groupby(['model','method','R']):
+            summaries.append(dict(dataset=label,model=model,method=method,R=R,points=len(d),
+                mean_coverage=d.coverage.mean(),mean_formula=d.formula_prediction.mean(),
+                rmse=np.sqrt(np.mean((d.coverage-d.formula_prediction)**2)),
+                mean_absolute_nominal_error=np.mean(abs(d.coverage-.95)),
+                mean_absolute_formula_error=np.mean(abs(d.formula_prediction-.95))))
+    pd.DataFrame(summaries).to_csv(DATA/'main_coverage_summary.csv',index=False)
+    tex=(SOURCE/'Manuscript.tex').read_text(encoding='utf-8')
+    rows=[]
+    for match in re.finditer(r'\\begin\{(figure|table)\}.*?\\end\{\1\}',tex,re.S):
+        kind,block=match.group(1),match.group(0);label=re.search(r'\\label\{([^}]+)\}',block)
+        if not label:continue
+        key=label.group(1);file=re.search(r'\\SafeIncludeGraphics\[[^\]]*\]\{([^}]+)\}',block)
+        asset=file.group(1) if file else ''
+        if key in ['fig:dpim-probability-transport','fig:linear-beam-model','fig:plate-sfem-model','tab:direct-finiteB-coefficients','tab:finite-B-validation','tab:numerical-notation']:
+            action='verify_preserve';dependency='schematic or analytic/calibration result independent of finite pool';script='existing source retained'
+        elif 'outer-workflow' in key:
+            action='verify_preserve';dependency='illustration uses retained first 256 realizations; no full-pool statistic';script='tc_recalculation_20260922/plotting/plot_real_data_outer_sample_workflow.py'
+        elif 'recommend' in key or 'R-recommendation' in key:
+            action='recalculate_redraw';dependency='all six RQMC/MC preliminary pools at P=30000; new selected-R independent intervals';script='deliverables/dpim_terminology_final_20260924/plot_all_examples_recommended_R_with_insets.m'
+        elif 'n-centered' in key:
+            action='recalculate_redraw';dependency='six n-study pools P=30000, n=192/384/768, 81 positions';script='tc_recalculation_20260922/plotting/update_n_coverage_revision_20260630.py'
+        elif 'core-tail' in key:
+            action='redraw';dependency='updated main coverage and unchanged correct 201-point reference';script='deliverables/euler_analytic_full_manuscript_20260923/review_figures/redraw_python_labels.py'
+        elif key=='tab:euler-pool-fresh':
+            action='recalculate';dependency='P=30000 pool vs retained independent trials, common P=30000 moments and analytic target';script='paper_refresh_30000_20260926/prepare_main_data.py'
+        elif key=='tab:numerical-protocols':
+            action='update_parameters';dependency='verified actual main/n-study/MC budgets; preserve fresh independent distinction';script='manuscript edit after all audits'
+        else:
+            action='update_from_verified_data';dependency='publication_data/nested_M_pointwise_coverage.csv';script='reference_expansion_20260925/plot_nested_M_paper_style.m'
+        rows.append(dict(kind=kind,label=key,asset=asset,source_line=tex[:match.start()].count('\n')+1,action=action,dependency=dependency,script=script))
+    assert sum(r['kind']=='figure' for r in rows)==15 and sum(r['kind']=='table' for r in rows)==11
+    pd.DataFrame(rows).to_csv(ROOT/'figure_table_dependency_map.csv',index=False)
+    manifest=dict(created_at=datetime.now(timezone.utc).isoformat(),source_manuscript=str(SOURCE/'Manuscript.tex'),
+                  source_sha256=sha(SOURCE/'Manuscript.tex'),input_hashes=input_records,
+                  all_main_data_staged=True,manuscript_updated=False,supplementary_data_pending=True,
+                  preserve_euler_fresh_primary=True,figures=15,tables=11)
+    (ROOT/'staging_manifest.json').write_text(json.dumps(manifest,indent=2),encoding='utf-8')
+    print('Main data and all 15 figure / 11 table dependencies verified; manuscript unchanged.')
+
+
+if __name__=='__main__':main()

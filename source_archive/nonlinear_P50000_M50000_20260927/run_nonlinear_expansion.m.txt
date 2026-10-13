@@ -1,0 +1,164 @@
+function run_nonlinear_expansion(mode)
+% Preserve the existing pool; use a fixed independent MC reference budget.
+if nargin<1,mode="preflight";end
+root=fileparts(mfilename('fullpath'));repo=fileparts(root);
+code=fullfile(repo,'tc_recalculation_20260922');addpath(code);
+maxNumCompThreads(2);setenv('OMP_NUM_THREADS','2');setenv('OPENBLAS_NUM_THREADS','2');
+old=load(fullfile(repo,'pool_expansion_30000_20260926/nonlinear/results/pool_complete.mat'));
+s=load(fullfile(code,'results/paper_scale_original_grid_20260922/nonlinear_rqmc_n768/design.mat'));design=s.design;
+cfg=old.cfg;assert(isequal(size(old.pool),[30000,226])&&~cfg.centering);
+assert(cfg.n==768&&cfg.h==.08&&cfg.B==399&&isequal(cfg.R,[16,128]));
+cfg.P_old=30000;cfg.P=50000;cfg.M=50000;cfg.reference_N=100000000;
+s=load(fullfile(code,'results/manuscript_selected_20260923/reference_nonlinear/reference_grids.mat'));
+assert(s.N==20000000&&s.h==cfg.h&&max(abs(s.grid201(:)-cfg.grid(1:201).'))<1e-13);
+grid=[reshape(cfg.grid,1,[]),reshape(s.grid81,1,[])];
+oldTruth=[reshape(s.d201,1,[]),reshape(old.cfg.truth,1,[]),reshape(s.d81,1,[])];
+oldSE=[reshape(s.s201,1,[]),reshape(old.cfg.reference_se,1,[]),reshape(s.s81,1,[])];
+assert(numel(grid)==307&&all(isfinite(oldTruth)));
+% The archived last chunk ends halfway through substream 810.
+first=29985;substream=(first-4097)/32+1;
+q=curves(design,32,cfg.grid,cfg.h,cfg.shift_seed,substream);
+assert(max(abs(q(1:16,:)-old.pool(first:30000,:)),[],'all')<1e-12);
+% Verify the reference stream at its old boundary before extending it.
+r=referenceResponses(19990001,10000);
+s=load(fullfile(code,'results/reference_expansion_10x_20260923/nonlinear/responses_019990001_020000000.mat'));
+assert(isequal(r,s.response));
+t=tic;ci=interval(old.pool(:,202:226),old.cfg,128,1);
+s=load(fullfile(repo,'pool_expansion_30000_20260926/nonlinear/results/P30000/R128/batch_00001_00100.mat'));
+assert(isequaln(ci.lower,reshape(s.lower(1,:,:),3,25))&&isequaln(ci.upper,reshape(s.upper(1,:,:),3,25)));
+intervalSeconds=toc(t);t=tic;[~,~]=kernelMoments(r,grid,cfg.h);kernelSeconds=toc(t);
+preflight=struct('passed',true,'prefix_boundary_verified',true, ...
+    'reference_boundary_verified',true,'original_interval_verified',true, ...
+    'interval_seconds',intervalSeconds,'reference_10000_seconds',kernelSeconds,'cfg',cfg);
+file=fullfile(root,'preflight.mat');
+if isfile(file),a=load(file);assert(a.passed&&isequaln(a.cfg,cfg));else,saveAtomic(file,preflight);end
+fprintf('PREFLIGHT PASS interval=%.3fs reference_10000=%.3fs\n',intervalSeconds,kernelSeconds);
+if mode=="preflight",return;end
+assert(mode=="run");
+folder=fullfile(root,'reference_chunks');if ~isfolder(folder),mkdir(folder);end
+Nold=20000000;total=Nold*oldTruth;
+square=oldSE.^2*(Nold*(Nold-1))+Nold*oldTruth.^2;
+clock=tic;
+for first=20000001:100000:100000000
+    last=first+99999;file=fullfile(folder,sprintf('reference_%09d_%09d.mat',first,last));
+    if isfile(file),a=load(file);
+    else
+        timer=tic;part=zeros(size(grid));partSquare=part;
+        for offset=0:10000:99999
+            response=referenceResponses(first+offset,10000);
+            [v,w]=kernelMoments(response,grid,cfg.h);part=part+v;partSquare=partSquare+w;
+        end
+        a=struct('first',first,'last',last,'total',part,'square',partSquare,'seconds',toc(timer));
+        saveAtomic(file,a);
+    end
+    assert(a.first==first&&a.last==last&&all(isfinite(a.total))&&all(a.total>=0));
+    total=total+a.total;square=square+a.square;
+    progress(root,'reference',last,100000000,toc(clock),last-20000000);
+    if mod(last,1000000)==0,fprintf('REFERENCE N=%d/100000000 elapsed=%.1fs\n',last,toc(clock));end
+    if ismember(last,[40000000,100000000])
+        density=total/last;se=sqrt(max(square-total.^2/last,0)/(last*(last-1)));
+        saveAtomic(fullfile(root,sprintf('reference_N%d.mat',last)), ...
+            struct('grid',grid,'density',density,'se',se,'N',last,'h',cfg.h, ...
+            'total',total,'square',square,'old_truth',oldTruth,'old_se',oldSE));
+    end
+end
+ref=load(fullfile(root,'reference_N100000000.mat'));cfg.truth=ref.density(202:226);
+cfg.reference_se=ref.se(202:226);saveAtomic(fullfile(root,'configuration.mat'),struct('cfg',cfg));
+pool=zeros(50000,226);pool(1:30000,:)=old.pool;clock=tic;
+folder=fullfile(root,'pool_chunks');if ~isfolder(folder),mkdir(folder);end
+for baseFirst=29985:32:50000
+    first=max(30001,baseFirst);last=min(baseFirst+31,50000);
+    substream=(baseFirst-4097)/32+1;
+    file=fullfile(folder,sprintf('curves_%05d_%05d.mat',first,last));
+    if isfile(file),a=load(file);
+    else
+        timer=tic;q=curves(design,32,cfg.grid,cfg.h,cfg.shift_seed,substream);
+        if baseFirst==29985,assert(max(abs(q(1:16,:)-old.pool(29985:30000,:)),[],'all')<1e-12);end
+        q=q((first:last)-baseFirst+1,:);
+        a=struct('first',first,'last',last,'q',q,'substream',substream,'seed',cfg.shift_seed,'seconds',toc(timer));
+        saveAtomic(file,a);
+    end
+    assert(a.first==first&&a.last==last&&a.seed==cfg.shift_seed&&a.substream==substream);
+    assert(isequal(size(a.q),[last-first+1,226])&&all(isfinite(a.q),'all')&&all(a.q>=0,'all'));
+    pool(first:last,:)=a.q;progress(root,'pool',last,50000,toc(clock),last-30000);
+    if mod(last,1024)==0||last==50000,fprintf('POOL P=%d/50000 elapsed=%.1fs\n',last,toc(clock));end
+end
+assert(isequal(pool(1:30000,:),old.pool));
+saveAtomic(fullfile(root,'pool_complete.mat'),struct('pool',pool,'cfg',cfg));clear old;
+q=pool(:,202:226);clock=tic;
+for R=cfg.R
+    folder=fullfile(root,sprintf('R%d',R));if ~isfolder(folder),mkdir(folder);end
+    for first=1:100:50000
+        last=first+99;file=fullfile(folder,sprintf('batch_%05d_%05d.mat',first,last));
+        if isfile(file),a=load(file);
+        else
+            timer=tic;a=struct('first',first,'last',last,'P',50000,'R',R, ...
+                'lower',zeros(100,3,25),'upper',zeros(100,3,25), ...
+                'zero',zeros(100,25),'ties',zeros(100,25));
+            for trial=first:last
+                ci=interval(q,cfg,R,trial);j=trial-first+1;
+                a.lower(j,:,:)=ci.lower;a.upper(j,:,:)=ci.upper;
+                a.zero(j,:)=ci.zero_bootstrap_variance;a.ties(j,:)=ci.bootstrap_mean_ties;
+            end
+            a.seconds=toc(timer);saveAtomic(file,a);
+        end
+        assert(a.first==first&&a.last==last&&a.P==50000&&a.R==R);
+        assert(~any(isnan(a.lower),'all')&&~any(isnan(a.upper),'all')&&all(a.lower<=a.upper,'all'));
+        done=last+50000*(R==128);progress(root,sprintf('coverage_R%d',R),done,100000,toc(clock),done);
+        if mod(last,1000)==0,fprintf('COVERAGE P=50000 R=%d M=%d/50000 elapsed=%.1fs\n',R,last,toc(clock));end
+    end
+end
+progress(root,'numerics_complete',100000,100000,toc(clock),100000);
+fprintf('NUMERICS COMPLETE P=50000 M=50000 Nref=100000000\n');
+end
+
+function response=referenceResponses(first,count)
+assert(mod(first-2000001,10000)==0&&count==10000);
+stream=RandStream('Threefry',Seed=2026092301);
+stream.Substream=2000000+(first-2000001)/10000+1;
+theta=randn(stream,count,5);response=responseFunction(theta);
+end
+
+function y=responseFunction(theta)
+y=2+.12*sum(theta,2)+.25*tanh(theta(:,1).*theta(:,2)) ...
+    +.08*(theta(:,3).^2-1)+.06*sin(theta(:,4).*theta(:,5));
+end
+
+function q=curves(design,count,grid,h,seed,substream)
+stream=RandStream('Threefry',Seed=seed);stream.Substream=substream;q=zeros(count,numel(grid));
+for j=1:count
+    u=mod(design.base+rand(stream,1,5),1);u(u==0)=realmin;u(u==1)=1-eps/2;
+    response=responseFunction(norminv(u));
+    K=exp(-.5*((grid(:).'-response)/h).^2)/(sqrt(2*pi)*h);q(j,:)=design.P(:).'*K;
+end
+end
+
+function [a,b]=kernelMoments(response,grid,h)
+a=zeros(size(grid));b=a;
+for first=1:2048:numel(response)
+    r=response(first:min(first+2047,numel(response)));
+    K=exp(-.5*((grid-r(:))/h).^2)/(sqrt(2*pi)*h);a=a+sum(K,1);b=b+sum(K.^2,1);
+end
+end
+
+function ci=interval(q,cfg,R,trial)
+stream=RandStream('Threefry',Seed=cfg.pool_draw_seed);stream.Substream=trial;
+idx=floor(rand(stream,128,1)*cfg.P)+1;
+ci=tc_intervals_from_original(q(idx(1:R),:),cfg.B,.05,R*10000+trial,cfg.bootstrap_seed);
+end
+
+function saveAtomic(file,a)
+if isfile(file),b=load(file);assert(isequaln(a,b),'Existing result differs: %s',file);return;end
+tmp=[char(file),'.writing.mat'];assert(~isfile(tmp),'Inspect interrupted write: %s',tmp);
+save(tmp,'-struct','a','-v7');b=load(tmp);assert(isequaln(a,b));
+[ok,msg]=movefile(tmp,file);assert(ok,msg);
+end
+
+function progress(root,phase,completed,target,elapsed,newDone)
+a=struct('phase',phase,'completed',completed,'target',target, ...
+    'elapsed_seconds',elapsed,'new_completed',newDone,'P',50000,'M',50000,'reference_N',100000000, ...
+    'updated_at',char(datetime('now','Format','yyyy-MM-dd HH:mm:ss')));
+tmp=fullfile(root,'progress.json.writing');fid=fopen(tmp,'w');assert(fid>=0);
+fwrite(fid,jsonencode(a));fclose(fid);jsondecode(fileread(tmp));
+[ok,msg]=movefile(tmp,fullfile(root,'progress.json'),'f');assert(ok,msg);
+end

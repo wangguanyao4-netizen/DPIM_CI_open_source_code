@@ -1,0 +1,3 @@
+"""Python implementation of the probability-weighted DPIM Kirchhoff plate workflow."""
+
+# Only the unchanged mechanics and KL modules are used by this campaign.

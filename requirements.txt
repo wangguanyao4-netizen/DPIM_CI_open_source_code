@@ -1,0 +1,10 @@
+# Project dependencies are installed separately, not vendored.
+numpy>=1.26,<3
+scipy>=1.12,<2
+sympy>=1.12,<2
+threadpoolctl>=3.4,<4
+pandas>=2.2,<4
+matplotlib>=3.8,<4
+pypdf>=5,<7
+Pillow>=10,<13
+reportlab>=4,<6

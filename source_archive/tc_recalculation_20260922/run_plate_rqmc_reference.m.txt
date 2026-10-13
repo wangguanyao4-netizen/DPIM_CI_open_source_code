@@ -1,0 +1,50 @@
+function run_plate_rqmc_reference()
+% Independent randomized integrations; group means quantify reference error.
+code=fileparts(mfilename('fullpath'));addpath(code);
+old=fullfile(code,'results','paper_scale_original_grid_20260922');
+root=fullfile(code,'results','plate_rqmc_reference_20260923');
+if ~isfolder(root),mkdir(root);end
+maxNumCompThreads(2);setenv('OPENBLAS_NUM_THREADS','2');setenv('OMP_NUM_THREADS','2');
+if pyenv().Status=="NotLoaded"
+    pyenv('Version','<configure-local-path>','ExecutionMode','InProcess');
+end
+insert(py.sys.path,int32(0),code);bridge=py.importlib.import_module('tc_bridge');
+bridge.initialize_plate();archive=py.numpy.load(fullfile(old,'fixed_plate_KL.npz'));
+assert(logical(py.numpy.array_equal(bridge.MODES,archive.get('nodal_modes'))));
+assert(logical(py.numpy.array_equal(bridge.MODEL.nodes,archive.get('nodes'))));
+assert(logical(py.numpy.array_equal(bridge.MODEL.quads,archive.get('quads'))));
+archive.close();
+s=load(fullfile(old,'reference_plate','reference.mat'),'ref');grid=s.ref.y;h=s.ref.h;
+config=struct('groups',8,'points_per_group',16384,'seed',2026092303,'dimension',10, ...
+    'h',h,'grid',grid,'centering',false,'replicate_type','MatousekAffineOwen scrambled Sobol', ...
+    'KL_exact_archive_match',true,'old_results_read_only',true);
+lock=fullfile(root,'config.mat');
+if isfile(lock),x=load(lock);assert(isequaln(config,x.config));else,save(lock,'config','-v7');end
+groupMeans=zeros(8,numel(grid));N=config.points_per_group;
+for group=1:8
+    folder=fullfile(root,sprintf('group_%02d',group));if ~isfolder(folder),mkdir(folder);end
+    rng(config.seed+group,'twister');U=net(scramble(sobolset(10),'MatousekAffineOwen'),N);
+    U(U==0)=realmin;U(U==1)=1-eps/2;
+    total=zeros(size(grid));count=0;
+    for first=1:512:N
+        last=min(first+511,N);file=fullfile(folder,sprintf('responses_%06d_%06d.mat',first,last));
+        if isfile(file),s=load(file,'response');response=s.response;
+        else
+            theta=norminv(U(first:last,:));timer=tic;
+            response=reshape(double(bridge.solve_plate(py.numpy.array(theta),first==1&&group==1)),[],1);
+            seconds=toc(timer);tmp=[char(file),'.writing.mat'];
+            save(tmp,'response','first','last','group','seconds','-v7');movefile(tmp,file);
+        end
+        assert(numel(response)==last-first+1&&all(isfinite(response)));
+        K=exp(-.5*((grid-response)/h).^2)/(sqrt(2*pi)*h);
+        total=total+sum(K,1);count=count+numel(response);
+    end
+    assert(count==N);groupMeans(group,:)=total/N;
+    fprintf('Plate RQMC reference group %d/8 complete; %d FE responses\n',group,group*N);
+end
+density=mean(groupMeans,1);se=std(groupMeans,0,1)/sqrt(8);
+save(fullfile(root,'reference.mat'),'config','grid','h','groupMeans','density','se','-v7');
+writetable(table(grid.',density.',se.','VariableNames',{'y','reference_density','reference_se'}), ...
+    fullfile(root,'reference_density.csv'));
+fprintf('PLATE RQMC REFERENCE COMPLETE: %s\n',root);
+end

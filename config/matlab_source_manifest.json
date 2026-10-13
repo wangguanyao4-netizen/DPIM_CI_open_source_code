@@ -1,0 +1,32 @@
+{
+  "schema": "matlab_code_archive_v1",
+  "purpose": "Code-only archive of existing computation code, not a new experiment generator",
+  "files": [
+    {
+      "path": "matlab/+dpim/tc_intervals_from_original.m",
+      "source_archive_path": "source_archive/tc_recalculation_20260922/tc_intervals_from_original.m.txt",
+      "source_sha256": "2dd927d5de146f990a73c15f537be3065db9ae3d2b02645915b9a26ccda0a349",
+      "published_sha256": "2dd927d5de146f990a73c15f537be3065db9ae3d2b02645915b9a26ccda0a349",
+      "changes": "None; byte-for-byte copy, original function name retained"
+    }
+  ],
+  "external_dependencies": [
+    {
+      "name": "finite-B coefficient CSV",
+      "included": false,
+      "required_by": "Historical formula and recommended-R calculations, not the standalone interval function",
+      "provision": "Supply externally or generate coefficient records with the original coefficient module and export them in the historical caller's expected CSV format and location",
+      "generator_source": "python/dpim_paper/coverage_coefficients.py",
+      "generator_function": "direct_coefficients(alpha, B)",
+      "parameters": {"alpha": 0.05, "B": [399, 999]},
+      "generation_performed": false,
+      "csv_validation_performed": false
+    }
+  ],
+  "data_policy": "Code only; coefficient CSVs, other CSV data, MAT archives, raw pools, fixtures and PDFs are not distributed",
+  "path_setup": "matlab/setup_dpim.m adds only the package MATLAB directory; no computation",
+  "validation_performed": "Static code inspection and code hash comparison only; no MATLAB execution or coefficient CSV verification is claimed",
+  "new_random_stream_protocol": false,
+  "fixture_extracted": false,
+  "raw_pool_included_by_this_task": false
+}

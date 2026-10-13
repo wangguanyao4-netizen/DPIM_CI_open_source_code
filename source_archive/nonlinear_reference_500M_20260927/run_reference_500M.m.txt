@@ -1,0 +1,73 @@
+function run_reference_500M(mode)
+% Extend the independent MC reference only; all intervals remain read only.
+if nargin<1,mode="preflight";end
+root=fileparts(mfilename('fullpath'));repo=fileparts(root);
+oldroot=fullfile(repo,'nonlinear_P50000_M50000_20260927');
+maxNumCompThreads(2);setenv('OMP_NUM_THREADS','2');setenv('OPENBLAS_NUM_THREADS','2');
+old=load(fullfile(oldroot,'reference_N100000000.mat'));
+assert(old.N==100000000&&old.h==.08&&numel(old.grid)==307);
+boundary=load(fullfile(oldroot,'reference_chunks/reference_099900001_100000000.mat'));
+t=tic;[a,b]=chunkMoments(99900001,100000,old.grid,old.h);
+assert(isequal(a,boundary.total)&&isequal(b,boundary.square));
+assert(isequal(old.density,old.total/old.N));
+fprintf('PREFLIGHT PASS exact old boundary; 100000 responses %.3fs\n',toc(t));
+file=fullfile(root,'preflight.mat');
+saveAtomic(file,struct('passed',true,'reference_N_old',100000000,'reference_N_target',500000000, ...
+    'seed',2026092301,'chunk',1000000,'substream_response_count',10000,'threads',2));
+if mode=="preflight",return;end
+assert(mode=="run");
+total=old.total;square=old.square;grid=old.grid;h=old.h;
+folder=fullfile(root,'reference_chunks');if ~isfolder(folder),mkdir(folder);end
+clock=tic;newThisRun=0;
+for first=100000001:1000000:500000000
+    last=first+999999;file=fullfile(folder,sprintf('reference_%09d_%09d.mat',first,last));
+    if isfile(file),a=load(file);
+    else
+        t=tic;[part,partSquare]=chunkMoments(first,1000000,grid,h);
+        a=struct('first',first,'last',last,'total',part,'square',partSquare,'seconds',toc(t));
+        saveAtomic(file,a);newThisRun=newThisRun+1000000;
+    end
+    assert(a.first==first&&a.last==last&&numel(a.total)==307&&all(isfinite(a.total)));
+    total=total+a.total;square=square+a.square;
+    progress(root,last,toc(clock),newThisRun);
+    if mod(last,10000000)==0,fprintf('REFERENCE N=%d/500000000 elapsed=%.1fs\n',last,toc(clock));end
+    if ismember(last,[200000000,500000000])
+        density=total/last;se=sqrt(max(square-total.^2/last,0)/(last*(last-1)));
+        saveAtomic(fullfile(root,sprintf('reference_N%d.mat',last)),struct('grid',grid,'h',h,'N',last, ...
+            'density',density,'se',se,'total',total,'square',square,'prefix_N',old.N));
+    end
+end
+fprintf('REFERENCE COMPLETE N=500000000; P and M unchanged at 50000\n');
+end
+
+function [a,b]=chunkMoments(first,count,grid,h)
+a=zeros(size(grid));b=a;
+for offset=0:10000:count-1
+    stream=RandStream('Threefry',Seed=2026092301);
+    stream.Substream=2000000+(first+offset-2000001)/10000+1;
+    theta=randn(stream,10000,5);
+    response=2+.12*sum(theta,2)+.25*tanh(theta(:,1).*theta(:,2)) ...
+        +.08*(theta(:,3).^2-1)+.06*sin(theta(:,4).*theta(:,5));
+    part=zeros(size(grid));sq=part;
+    for k=1:2048:10000
+        r=response(k:min(k+2047,10000));
+        K=exp(-.5*((grid-r(:))/h).^2)/(sqrt(2*pi)*h);
+        part=part+sum(K,1);sq=sq+sum(K.^2,1);
+    end
+    a=a+part;b=b+sq;
+end
+end
+
+function saveAtomic(file,a)
+if isfile(file),b=load(file);assert(isequaln(a,b),'Existing file mismatch');return;end
+tmp=[char(file),'.writing.mat'];assert(~isfile(tmp),'Inspect interrupted write: %s',tmp);
+save(tmp,'-struct','a','-v7');b=load(tmp);assert(isequaln(a,b));
+[ok,msg]=movefile(tmp,file);assert(ok,msg);
+end
+
+function progress(root,N,elapsed,newDone)
+a=struct('phase','reference','completed',N,'target',500000000,'P',50000,'M',50000, ...
+    'new_completed',newDone,'elapsed_seconds',elapsed,'updated_at',char(datetime('now','Format','yyyy-MM-dd HH:mm:ss')));
+file=fullfile(root,'progress.json');tmp=[file,'.writing'];fid=fopen(tmp,'w');assert(fid>=0);
+fwrite(fid,jsonencode(a));fclose(fid);jsondecode(fileread(tmp));[ok,msg]=movefile(tmp,file,'f');assert(ok,msg);
+end

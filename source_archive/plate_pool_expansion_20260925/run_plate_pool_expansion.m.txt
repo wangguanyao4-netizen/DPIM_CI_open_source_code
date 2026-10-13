@@ -1,0 +1,162 @@
+function run_plate_pool_expansion(mode)
+% Extend the existing fixed-design pool; never overwrite original evidence.
+if nargin<1,mode="preflight";end
+root=fileparts(mfilename('fullpath'));repo=fileparts(root);
+code=fullfile(repo,'tc_recalculation_20260922');addpath(code);
+base=fullfile(code,'results','paper_scale_original_grid_20260922');
+out=fullfile(root,'results');if ~isfolder(out),mkdir(out);end
+maxNumCompThreads(2);setenv('OPENBLAS_NUM_THREADS','2');setenv('OMP_NUM_THREADS','2');
+if pyenv().Status=="NotLoaded"
+    pyenv('Version','<configure-local-path>','ExecutionMode','InProcess');
+end
+insert(py.sys.path,int32(0),code);bridge=py.importlib.import_module('tc_bridge');bridge.initialize_plate();
+s=load(fullfile(base,'plate_rqmc_n200','design.mat'));design=s.design;
+s=load(fullfile(base,'plate_rqmc_n200','pilot_complete.mat'));old=s.pilot;
+ref=load(fullfile(repo,'reference_expansion_2m_20260925','results','reference.mat'));
+s=load(fullfile(base,'reference_plate','reference_coverage_grid.mat'));cy=s.ref.y;
+[gap,idx]=min(abs(cy(:)-ref.grid(:).'),[],2);
+assert(max(gap)<1e-16&&numel(unique(idx))==25);
+assert(isequal(size(old),[4096,201])&&design.n==200&&abs(sum(design.P)-1)<1e-12);
+s=load(fullfile(base,'coverage_grid','plate_rqmc_n200','pilot_complete.mat'));
+assert(isequal(old(:,idx),s.pilot));
+archive=py.numpy.load(fullfile(base,'fixed_plate_KL.npz'));
+assert(logical(py.numpy.array_equal(bridge.MODES,archive.get('nodal_modes'))));
+assert(logical(py.numpy.array_equal(bridge.MODEL.nodes,archive.get('nodes'))));
+assert(logical(py.numpy.array_equal(bridge.MODEL.quads,archive.get('quads'))));archive.close();
+cfg=struct('P',20000,'P_old',4096,'prefixes',[4096,10000,20000],'n',200, ...
+    'R',[16,128],'B',999,'M',5000,'alpha',.05,'h',ref.h,'grid',ref.grid,'coverage_grid',cy, ...
+    'centering',false,'threads',2,'shift_seed',2026092501, ...
+    'pool_draw_seed',2026092502,'bootstrap_seed',2026092503,'chunk',32);
+saveAtomic(fullfile(out,'config.mat'),struct('cfg',cfg));
+% Reproduce the first two archived curves with the original substream rule.
+key=((((3*1000+design.code)*32768+design.n)*2048)*10000+1)+1;
+timer=tic;[check,~]=curves(design,2,ref.grid,ref.h,20260922,key,bridge);
+relative=max(abs(check-old(1:2,:)),[],'all')/max(abs(old(1:2,:)),[],'all');
+assert(relative<1e-11,'Archived curve mismatch');
+test=tc_intervals_from_original(old(1:16,idx),999,.05,1,cfg.bootstrap_seed);
+assert(isequal(size(test.lower),[3,25]));
+fprintf('PREFLIGHT PASS relative_curve_error=%.3g seconds=%.2f\n',relative,toc(timer));
+saveAtomic(fullfile(out,'preflight.mat'),struct('relative_curve_error',relative,'old_prefix_verified',true));
+if mode=="preflight",return;end
+assert(mode=="run");
+pool=zeros(20000,201);pool(1:4096,:)=old;
+folder=fullfile(out,'chunks');if ~isfolder(folder),mkdir(folder);end
+wall=tic;
+for first=4097:32:20000
+    last=min(first+31,20000);file=fullfile(folder,sprintf('curves_%05d_%05d.mat',first,last));
+    substream=(first-4097)/32+1;
+    if isfile(file)
+        a=load(file);assert(a.first==first&&a.last==last&&a.substream==substream);
+        assert(a.seed==cfg.shift_seed&&isequal(size(a.q),[last-first+1,201]));
+    else
+        timer=tic;[q,shifts]=curves(design,last-first+1,ref.grid,ref.h,cfg.shift_seed,substream,bridge);
+        a=struct('first',first,'last',last,'substream',substream,'seed',cfg.shift_seed, ...
+            'q',q,'shifts',shifts,'seconds',toc(timer));
+        saveAtomic(file,a);
+    end
+    assert(all(isfinite(a.q),'all')&&all(a.q>=0,'all'));
+    pool(first:last,:)=a.q;
+    status(out,'pool',last,20000,toc(wall));
+    fprintf('%s pool=%d/20000 new=%d batch_seconds=%.2f elapsed=%.1f\n', ...
+        char(datetime('now')),last,last-4096,a.seconds,toc(wall));
+end
+assert(isequal(pool(1:4096,:),old));
+saveAtomic(fullfile(out,'pool_complete.mat'),struct('pool',pool,'cfg',cfg));
+coeff=readtable(fullfile(code,'raw_percentile_finiteB_coefficients.csv'),TextType='string',Delimiter=',');
+recommendations=table();
+for P=cfg.prefixes
+    stage=fullfile(out,sprintf('P%d',P));if ~isfolder(stage),mkdir(stage);end
+    q=pool(1:P,idx);[g,k,v]=moments(q);
+    rows=table();
+    for R=cfg.R
+        folder=fullfile(stage,sprintf('R%d',R));if ~isfolder(folder),mkdir(folder);end
+        lo=zeros(cfg.M,3,25);hi=lo;
+        for first=1:100:cfg.M
+            last=first+99;file=fullfile(folder,sprintf('batch_%05d_%05d.mat',first,last));
+            if isfile(file)
+                a=load(file);assert(a.first==first&&a.last==last&&a.P==P&&a.R==R);
+            else
+                timer=tic;a=struct('first',first,'last',last,'P',P,'R',R, ...
+                    'lower',zeros(100,3,25),'upper',zeros(100,3,25), ...
+                    'zero',zeros(100,25),'ties',zeros(100,25));
+                for trial=first:last
+                    stream=RandStream('Threefry',Seed=cfg.pool_draw_seed);stream.Substream=trial;
+                    indices=floor(rand(stream,128,1)*P)+1;
+                    % Common uniforms and bootstrap substreams compare fixed P prefixes.
+                    ci=tc_intervals_from_original(q(indices(1:R),:),cfg.B,.05,R*10000+trial,cfg.bootstrap_seed);
+                    j=trial-first+1;a.lower(j,:,:)=ci.lower;a.upper(j,:,:)=ci.upper;
+                    a.zero(j,:)=ci.zero_bootstrap_variance;a.ties(j,:)=ci.bootstrap_mean_ties;
+                end
+                a.seconds=toc(timer);saveAtomic(file,a);
+            end
+            lo(first:last,:,:)=a.lower;hi(first:last,:,:)=a.upper;
+        end
+        for m=1:3
+            names=["Student t","percentile bootstrap","bootstrap-t"];
+            keys=["t distribution","percentile bootstrap","bootstrap-t"];
+            c=coeff(coeff.B==999&coeff.method==keys(m),:);
+            val=@(key)c.value(c.coefficient==key);
+            pred=.95+(val("A0")+val("A4")*k+val("A33")*g.^2)/R;
+            lower=reshape(lo(:,m,:),cfg.M,25);upper=reshape(hi(:,m,:),cfg.M,25);
+            truth=reshape(ref.density(idx),1,[]);se=reshape(ref.se(idx),1,[]);
+            hits=sum(lower<=truth&truth<=upper,1);cpLo=zeros(1,25);cpHi=ones(1,25);
+            use=hits>0;cpLo(use)=betaincinv(.025,hits(use),cfg.M-hits(use)+1);
+            use=hits<cfg.M;cpHi(use)=betaincinv(.975,hits(use)+1,cfg.M-hits(use));
+            row=table(repmat("plate",25,1),repmat("rqmc",25,1),repmat(names(m),25,1), ...
+                repmat(200,25,1),repmat(R,25,1),repmat(999,25,1),repmat(5000,25,1),cy(:), ...
+                hits.',hits.'/5000,cpLo.',cpHi.',pred.',truth.',se.',sqrt(v.'/R), ...
+                repmat(P,25,1),repmat("finite_pool_conditional",25,1), ...
+                'VariableNames',{'model','scheme','method','n','R','B','M','y','hit_count','coverage', ...
+                'cp95_lower','cp95_upper','formula_prediction','truth','reference_se','outer_mean_se','P','experiment_type'});
+            rows=[rows;row]; %#ok<AGROW>
+        end
+        fprintf('COVERAGE P=%d R=%d M=5000 done\n',P,R);
+    end
+    writetable(rows,fullfile(stage,'nested_M_pointwise_coverage.csv'));
+    [g,k]=moments(pool(1:P,:));density=mean(pool(1:P,:),1);core=density>=.05*max(density);
+    for m=1:3
+        keys=["t distribution","percentile bootstrap","bootstrap-t"];
+        c=coeff(coeff.B==999&coeff.method==keys(m),:);val=@(key)c.value(c.coefficient==key);
+        Lambda=abs(val("A0"))+abs(val("A4"))*max(abs(k(core)))+abs(val("A33"))*max(abs(g(core)))^2;
+        recommendations=[recommendations;table(P,keys(m),Lambda,max(16,ceil(Lambda/.01)), ...
+            'VariableNames',{'P','method','Lambda','recommended_R'})]; %#ok<AGROW>
+    end
+end
+writetable(recommendations,fullfile(out,'recommended_R.csv'));
+status(out,'numerics_complete',20000,20000,toc(wall));
+fprintf('NUMERICS COMPLETE elapsed=%.1f\n',toc(wall));
+end
+
+function [q,shifts]=curves(design,count,grid,h,seed,substream,bridge)
+stream=RandStream('Threefry',Seed=seed);stream.Substream=substream;
+q=zeros(count,numel(grid));shifts=zeros(count,10);
+for j=1:count
+    shifts(j,:)=rand(stream,1,10);u=mod(design.base+shifts(j,:),1);
+    u(u==0)=realmin;u(u==1)=1-eps/2;
+    y=reshape(double(bridge.solve_plate(py.numpy.array(norminv(u)))),[],1);
+    K=exp(-.5*((grid(:).'-y)/h).^2)/(sqrt(2*pi)*h);
+    q(j,:)=design.P(:).'*K;
+end
+end
+
+function [g,k,v]=moments(q)
+N=size(q,1);dx=q-mean(q,1);m2=mean(dx.^2,1);m3=mean(dx.^3,1);m4=mean(dx.^4,1);
+v=N/(N-1)*m2;k3=N^2/((N-1)*(N-2))*m3;
+k4=N^2*((N+1)*m4-3*(N-1)*m2.^2)/((N-1)*(N-2)*(N-3));
+g=k3./v.^1.5;k=k4./v.^2;
+end
+
+function saveAtomic(path,payload)
+if isfile(path),a=load(path);assert(isequaln(a,payload));return;end
+temp=[char(path),'.writing.mat'];assert(~isfile(temp),'Partial file requires inspection: %s',temp);
+save(temp,'-struct','payload','-v7');a=load(temp);assert(isequaln(a,payload));
+[ok,msg]=movefile(temp,path);assert(ok,msg);
+end
+
+function status(root,phase,completed,target,elapsed)
+a=struct('phase',phase,'completed',completed,'target',target,'elapsed_seconds',elapsed, ...
+    'updated_at',char(datetime('now','Format','yyyy-MM-dd HH:mm:ss')));
+path=fullfile(root,'progress.json');temp=[path,'.writing'];
+fid=fopen(temp,'w');assert(fid>=0);fwrite(fid,jsonencode(a));fclose(fid);
+jsondecode(fileread(temp));movefile(temp,path,'f');
+end

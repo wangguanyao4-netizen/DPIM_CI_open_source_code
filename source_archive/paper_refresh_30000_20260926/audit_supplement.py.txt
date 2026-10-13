@@ -1,0 +1,153 @@
+"""Independent checks of supplementary pools, coverage and recommendations."""
+from pathlib import Path
+from datetime import datetime, timezone
+import hashlib
+import json
+import sys
+import numpy as np
+import pandas as pd
+from scipy.io import loadmat
+from scipy.stats import kstat, beta, norm
+
+ROOT=Path(__file__).resolve().parent
+REPO=ROOT.parent
+CODE=REPO/'tc_recalculation_20260922'
+BASE=CODE/'results/paper_scale_original_grid_20260922'
+METHODS=['Student t','percentile bootstrap','bootstrap-t']
+
+
+def sha(p):
+    with Path(p).open('rb') as f:
+        return hashlib.file_digest(f,'sha256').hexdigest()
+
+
+def specs():
+    return [(m,n,'n_study','rqmc') for m in ['linear','nonlinear'] for n in [192,384,768]]+[(m,n,'mc','mc') for m,n in [('linear',20000),('nonlinear',20000),('plate',1000)]]
+
+
+def protect():
+    path=ROOT/'protected_inputs.json'
+    if '--prepare' in sys.argv:
+        assert not path.exists()
+        records=json.loads((REPO/'pool_expansion_30000_20260926/protected_inputs.json').read_text())
+        for m,n,kind,scheme in specs():
+            src=BASE/f'{m}_{scheme}_n{n}'
+            if kind=='n_study':src=BASE/'n_study'/src.name
+            for f in [src/'design.mat',src/'pilot_complete.mat']:
+                records[str(f.resolve())]=sha(f)
+        for m in ['linear','nonlinear','plate']:
+            folder=REPO/'pool_expansion_30000_20260926'/m/'results'
+            a=json.loads((folder/'audit_manifest.json').read_text())
+            assert a['status']=='passed' and a['P']==30000
+            assert sha(folder/'pool_complete.mat')==a['pool_sha256']
+            for f in [folder/'pool_complete.mat',folder/'recommended_R.csv',folder/'P30000/nested_M_pointwise_coverage.csv']:
+                records[str(f.resolve())]=sha(f)
+        for f in (CODE/'results/manuscript_selected_20260923/reference_nonlinear').glob('*.mat'):
+            records[str(f.resolve())]=sha(f)
+        path.write_text(json.dumps(records,indent=2),encoding='utf-8')
+    records=json.loads(path.read_text())
+    for f,h in records.items():assert sha(f)==h,f'Protected source changed: {f}'
+    return records
+
+
+def coeff(B,method):
+    co=pd.read_csv(CODE/'raw_percentile_finiteB_coefficients.csv')
+    key='t distribution' if method=='Student t' else method
+    return co[(co.B==B)&(co.method==key)].set_index('coefficient').value
+
+
+def moments(q):
+    # Orders >=2 are translation invariant; avoid cancellation in raw powers.
+    dx=q-q.mean(axis=0)
+    v=kstat(dx,2,axis=0)
+    return kstat(dx,3,axis=0)/v**1.5,kstat(dx,4,axis=0)/v**2,v
+
+
+def check_rec(pool,rec,B):
+    g,k,_=moments(pool);density=pool.mean(axis=0);core=density>=.05*density.max()
+    for method in METHODS:
+        c=coeff(B,method);lam=abs(c.A0)+abs(c.A4)*max(abs(k[core]))+abs(c.A33)*max(abs(g[core]))**2
+        row=rec[rec.method==method].iloc[0]
+        assert abs(row.Lambda-lam)<1e-9 and row.R_recommended==max(16,np.ceil(lam/.01)), (
+            f'{method}: saved Lambda={row.Lambda}, checked Lambda={lam}, '
+            f'saved R={row.R_recommended}, checked R={max(16,np.ceil(lam/.01))}')
+
+
+def main():
+    protected=protect()
+    if '--prepare' in sys.argv:
+        print('Protected inputs:',len(protected));return
+    records=[];internal=[]
+    for m,n,kind,scheme in specs():
+        if '--internal-only' in sys.argv and kind!='n_study':continue
+        name=f'{m}_{scheme}_n{n}';out=ROOT/'results'/kind/name
+        src=(BASE/'n_study'/name) if kind=='n_study' else BASE/name
+        a=loadmat(out/'pool_complete.mat',simplify_cells=True);pool=a['pool'];cfg=a['cfg']
+        old=loadmat(src/'pilot_complete.mat')['pilot'];G=old.shape[1]
+        assert pool.shape==(30000,G) and np.array_equal(pool[:4096],old)
+        assert cfg['P']==30000 and not cfg['centering'] and cfg['n']==n
+        assert np.isfinite(pool).all() and (pool>=0).all()
+        expected=4097;chunks=[];shifts=[]
+        for f in sorted((out/'chunks').glob('curves_*.mat')):
+            b=loadmat(f,simplify_cells=True);last=min(expected+31,30000)
+            assert b['first']==expected and b['last']==last and b['seed']==cfg['shift_seed']
+            assert b['substream']==(expected-4097)//32+1
+            assert np.array_equal(b['q'],pool[expected-1:last]);shifts.append(b['shifts'])
+            chunks.append(dict(path=str(f),sha256=sha(f)));expected=last+1
+        assert expected==30001 and len(chunks)==810
+        assert len(np.unique(np.concatenate(shifts),axis=0))==25904
+        assert not list(out.rglob('*.writing.mat'))
+        truth=cfg['truth'];grid=cfg['grid']
+        if m=='linear':assert np.allclose(truth,norm.pdf(grid,scale=np.sqrt(1+cfg['h']**2)),rtol=0,atol=1e-14)
+        elif m=='nonlinear':
+            ref=loadmat(CODE/'results/manuscript_selected_20260923/reference_nonlinear/reference_grids.mat',simplify_cells=True)
+            assert ref['N']==20000000 and np.array_equal(truth,ref['d81' if kind=='n_study' else 'd201'])
+        else:
+            ref=loadmat(REPO/'reference_expansion_2m_20260925/results/reference.mat',simplify_cells=True)
+            assert np.array_equal(truth,ref['density']) and cfg['reference_N']==2097152
+        if kind=='n_study':
+            rows=pd.read_csv(out/'coverage.csv');assert len(rows)==243 and (rows.P==30000).all()
+            blocks=[loadmat(f,simplify_cells=True) for f in sorted(out.glob('coverage_*.mat'))];assert len(blocks)==4
+            lo=np.concatenate([b['lower'] for b in blocks]);hi=np.concatenate([b['upper'] for b in blocks])
+            assert lo.shape==hi.shape==(400,3,81) and np.all(lo<=hi)
+            g,k,_=moments(pool)
+            for j,method in enumerate(METHODS):
+                d=rows[rows.method==method].sort_values('y');hit=((lo[:,j]<=truth)&(truth<=hi[:,j])).sum(axis=0);c=coeff(399,method)
+                assert np.array_equal(hit,d.hit_count) and np.allclose(hit/400,d.coverage,atol=1e-14,rtol=0)
+                assert np.allclose(.95+(c.A0+c.A4*k+c.A33*g*g)/128,d.formula_prediction,atol=1e-10,rtol=0)
+                assert np.allclose(np.where(hit==0,0,beta.ppf(.025,hit,401-hit)),d.cp95_lower)
+                assert np.allclose(np.where(hit==400,1,beta.ppf(.975,hit+1,400-hit)),d.cp95_upper)
+            internal.append(rows)
+        else:check_rec(pool,pd.read_csv(out/'recommended_R.csv'),int(cfg['B']))
+        records.append(dict(model=m,n=n,kind=kind,P=30000,pool_sha256=sha(out/'pool_complete.mat'),chunks=chunks))
+        print('PASS pool:',kind,name,flush=True)
+    combined=pd.read_csv(ROOT/'results/n_uncentered_coverage_results.csv')
+    pd.testing.assert_frame_equal(pd.concat(internal,ignore_index=True),combined)
+    if '--internal-only' in sys.argv:
+        report=dict(status='passed',P=30000,scope='six_internal_n_pools',centering=False,
+                    checked_at=datetime.now(timezone.utc).isoformat(),pools=records,rows=len(combined))
+        (ROOT/'results/internal_n_audit.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
+        print('INTERNAL N AUDIT PASS');return
+    rec=pd.read_csv(ROOT/'results/recommended_R_before_intervals.csv');ci=pd.read_csv(ROOT/'results/all_recommended_R_intervals.csv')
+    assert len(rec)==18 and len(ci)==18*201
+    for (m,scheme),rr in rec.groupby(['model','scheme']):
+        n=int(rr.n.iloc[0]);B=int(rr.B.iloc[0]);name=f'{m}_{scheme}_n{n}'
+        out=ROOT/'results'/('mc' if scheme=='mc' else 'recommended')/name
+        if scheme=='rqmc':
+            pool=loadmat(REPO/'pool_expansion_30000_20260926'/m/'results/pool_complete.mat')['pool'][:,:201]
+            check_rec(pool,rr,B)
+        for j,method in enumerate(METHODS):
+            a=loadmat(out/f'recommended_method_{j+1}_raw.mat',simplify_cells=True);q=a['q'];r=int(rr[rr.method==method].R_recommended.iloc[0])
+            d=ci[(ci.model==m)&(ci.scheme==scheme)&(ci.method==method)].sort_values('y')
+            assert q.shape==(r,201) and a['R']==r and len(d)==201
+            assert np.allclose(d.sample_mean,q.mean(axis=0),atol=1e-10,rtol=1e-12)
+            assert np.allclose(d.sample_sd,q.std(axis=0,ddof=1),atol=1e-10,rtol=1e-12)
+            assert np.allclose(d.ci_lower,a['out']['lower'][j],equal_nan=False)
+            assert np.allclose(d.ci_upper,a['out']['upper'][j],equal_nan=False)
+    report=dict(status='passed',P=30000,centering=False,checked_at=datetime.now(timezone.utc).isoformat(),
+                protected_inputs=protected,pools=records,interval_rows=len(ci),internal_rows=len(combined),manual_visual_review_pending=True)
+    (ROOT/'results/numerical_audit.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
+    print('SUPPLEMENT AUDIT PASS')
+
+
+if __name__=='__main__':main()

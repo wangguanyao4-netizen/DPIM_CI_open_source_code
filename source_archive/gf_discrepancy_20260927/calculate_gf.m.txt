@@ -1,0 +1,39 @@
+function calculate_gf()
+% Exact weighted marginal-CDF supremum for the archived initial point sets.
+root = fileparts(mfilename('fullpath'));
+repo = fileparts(root);
+source = fullfile(repo,'tc_recalculation_20260922','results','paper_scale_original_grid_20260922');
+models = ["linear","nonlinear","plate"];
+ns = [768,768,200];
+rows = table(); dimensions = table();
+for k = 1:numel(models)
+    path = fullfile(source,sprintf('%s_rqmc_n%d',models(k),ns(k)),'design.mat');
+    s = load(path,'design'); d = s.design;
+    u = d.base; w = d.P(:);
+    assert(size(u,1)==ns(k) && d.n==ns(k));
+    assert(all(isfinite(u),'all') && all(u>=0 & u<1,'all'));
+    assert(all(w>=0) && abs(sum(w)-1)<1e-12);
+    values = zeros(1,size(u,2));
+    for j = 1:size(u,2)
+        [x,order] = sort(u(:,j));
+        % Aggregate ties before evaluating the two sides of each CDF jump.
+        [distinct,~,groups] = unique(x);
+        mass = accumarray(groups,w(order));
+        right = cumsum(mass); left = right-mass;
+        minus = distinct-left; plus = right-distinct;
+        [a,ia] = max(minus); [b,ib] = max(plus);
+        values(j)=max(a,b);
+        if a>=b, witness=distinct(ia);side="left";else,witness=distinct(ib);side="right";end
+        dimensions=[dimensions;table(models(k),j,values(j),a,b,witness,side, ...
+            VariableNames={'model','dimension','GF','D_minus','D_plus','witness_u','witness_side'})]; %#ok<AGROW>
+    end
+    [gf,dim]=max(values);
+    rows=[rows;table(models(k),d.n,size(u,2),sum(w),gf,dim,string(path), ...
+        VariableNames={'model','n','dimension_count','weight_sum','GF','max_dimension','design_path'})]; %#ok<AGROW>
+    % Small immutable inputs make the discrepancy computation reproducible.
+    save(fullfile(root,models(k)+'_initial_design.mat'),'d');
+end
+writetable(rows,fullfile(root,'gf_summary.csv'));
+writetable(dimensions,fullfile(root,'gf_by_dimension.csv'));
+disp(rows(:,1:6));
+end

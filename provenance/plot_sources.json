@@ -1,0 +1,314 @@
+{
+  "schema_version": 2,
+  "created_utc": "2026-10-12T21:34:50.99378-04:00",
+  "path_policy": "files lists only public source-code/TeX paths relative to the release root. inputs/archive_relative_path identifies upstream source provenance, not a packaged dataset or required private absolute path.",
+  "data_scope": "No data, CSV results, numerical ordinates, interval endpoints, PDF figures, or manuscript files are distributed. All numerical plotting/table inputs must be supplied externally by the user.",
+  "new_simulations": 0,
+  "files": [
+    {
+      "path": "plotting/current_labels.py",
+      "sha256": "d51543a9b888aa58bc268b8594c8f17f2c59f396a2283d881a8ecd8bfcce72fe",
+      "bytes": 2717,
+      "inputs": [
+        {
+          "archive_relative_path": "reports/manuscript_structure_tables_20261012/redraw_mechanism_labels.py",
+          "sha256": "b7ec86b6c8e43788b01c7cedf5d3dc5f13204f173c177eeeed5268afdf7212db",
+          "selection": "mechanical AST extraction: geometry, change_labels"
+        }
+      ],
+      "adaptation": "Original plotting code or mechanically extracted functions; portable I/O, explicit adapter, manuscript/QA/private-path side effects removed. Packaged hash is after adaptation; upstream hash is before. Not executed.",
+      "distribution": "public_source"
+    },
+    {
+      "path": "plotting/historicalproduction.py",
+      "sha256": "0eb62f562e0f314108230bf8eac514cc814962630ae7406f18ac678421969691",
+      "bytes": 6792,
+      "inputs": [],
+      "role": "Release adapter/documentation or optional test supplied without execution",
+      "distribution": "public_source"
+    },
+    {
+      "path": "plotting/internal_n.py",
+      "sha256": "4deda1fc9a48639c50dc7bb0d18971d6992b9b520911801dd2d1b8bc21c7b726",
+      "bytes": 3040,
+      "inputs": [
+        {
+          "archive_relative_path": "tc_recalculation_20260922/plotting/update_n_coverage_revision_20260630.py",
+          "sha256": "85d27c158475e01da7dabed7995e436f827ea320571b338e0bdfd029f7cd7d94",
+          "selection": "mechanical AST extraction: METHODS, METHOD_LABEL, METHOD_COLOR, N_VALUES, configure_plots, plot_n_coverage"
+        }
+      ],
+      "adaptation": "Original plotting code or mechanically extracted functions; portable I/O, explicit adapter, manuscript/QA/private-path side effects removed. Packaged hash is after adaptation; upstream hash is before. Not executed.",
+      "distribution": "public_source"
+    },
+    {
+      "path": "plotting/labels.py",
+      "sha256": "5931f2a88a77e0de81f177ee664db06f79434558002c8c267e8a6ee92ca787f0",
+      "bytes": 1041,
+      "inputs": [
+        {
+          "archive_relative_path": "deliverables/euler_analytic_full_manuscript_20260923/review_figures/redraw_python_labels.py",
+          "sha256": "91bedb12511e4e70d961d0d78cc9812ee1759f0597163709414f4f56869d1b06",
+          "selection": "mechanical AST extraction: save_labels"
+        }
+      ],
+      "adaptation": "Original plotting code or mechanically extracted functions; portable I/O, explicit adapter, manuscript/QA/private-path side effects removed. Packaged hash is after adaptation; upstream hash is before. Not executed.",
+      "distribution": "public_source"
+    },
+    {
+      "path": "plotting/matlab/plot_intervals_pdf_label_only.m",
+      "sha256": "3b2149d1046f476c93afa5b8248cae83425d0ee9f1ef09c83549f27d86e8eed8",
+      "bytes": 16257,
+      "inputs": [
+        {
+          "archive_relative_path": "reports/manuscript_structure_tables_20261012/figure_labels/interval_density/plot_intervals_pdf_label_only.m",
+          "sha256": "4c0a6a6bc7b24a9c2668db101f197cf4076792b6d83c231d93ea9b7d73a28fb7",
+          "selection": "byte-for-byte copy of approved source"
+        }
+      ],
+      "adaptation": "Original plotting code or mechanically extracted functions; portable I/O, explicit adapter, manuscript/QA/private-path side effects removed. Packaged hash is after adaptation; upstream hash is before. Not executed.",
+      "distribution": "public_source"
+    },
+    {
+      "path": "plotting/matlab/plot_nested_M_paper_style.m",
+      "sha256": "4291fc588cc67580f04fd4d1b4eb3164c6f4be6207f69a64f82baddfc0a99982",
+      "bytes": 5450,
+      "inputs": [
+        {
+          "archive_relative_path": "reference_expansion_20260925/plot_nested_M_paper_style.m",
+          "sha256": "55a0b7b07d44ab16ca1b408c6d62cbb10ae0a78afc4bc155f74f3c4fb49ec57a",
+          "selection": "byte-for-byte copy of approved source"
+        }
+      ],
+      "adaptation": "Original plotting code or mechanically extracted functions; portable I/O, explicit adapter, manuscript/QA/private-path side effects removed. Packaged hash is after adaptation; upstream hash is before. Not executed.",
+      "distribution": "public_source"
+    },
+    {
+      "path": "plotting/matlab/replay_matlab.m",
+      "sha256": "bc310b6fb3f05757ee698d9b56a0a1fbed1e4738038cf0fc44f673b2c95570ae",
+      "bytes": 1347,
+      "inputs": [],
+      "role": "Release adapter/documentation or optional test supplied without execution",
+      "distribution": "public_source"
+    },
+    {
+      "path": "plotting/plot_linear_plate_real_data_mechanisms.py",
+      "sha256": "4a590cb5af905fd483a908c692eb4963ed03f8aafeb01957168f5d7feaf291a2",
+      "bytes": 13813,
+      "inputs": [
+        {
+          "archive_relative_path": "tc_recalculation_20260922/plotting/plot_linear_plate_real_data_mechanisms.py",
+          "sha256": "82e38afd1ca3a6168372901c6b48348eb391a3fb16f18dbbb82058196ce9ba09",
+          "selection": "byte-for-byte copy of approved source"
+        }
+      ],
+      "adaptation": "Original plotting code or mechanically extracted functions; portable I/O, explicit adapter, manuscript/QA/private-path side effects removed. Packaged hash is after adaptation; upstream hash is before. Not executed.",
+      "distribution": "public_source"
+    },
+    {
+      "path": "plotting/plot_nonlinear_real_data_mechanism.py",
+      "sha256": "f63ef4832b73b074e59dd6da7aedc1a67c346d2a259b9ce857ae7e3d0df0c68a",
+      "bytes": 15000,
+      "inputs": [
+        {
+          "archive_relative_path": "tc_recalculation_20260922/plotting/plot_nonlinear_real_data_mechanism.py",
+          "sha256": "b5f1e5745148c3bc62c0d34722bc9984fa14522e60f21a6106f7a3b74e368d44",
+          "selection": "byte-for-byte copy of approved source"
+        }
+      ],
+      "adaptation": "Original plotting code or mechanically extracted functions; portable I/O, explicit adapter, manuscript/QA/private-path side effects removed. Packaged hash is after adaptation; upstream hash is before. Not executed.",
+      "distribution": "public_source"
+    },
+    {
+      "path": "plotting/prepare_publication.py",
+      "sha256": "24d16c0e6ad66b5ef5c3c53fb5a4d29ad31c29cb4eebe47571d98878fa48dfed",
+      "bytes": 12485,
+      "inputs": [],
+      "role": "Release adapter/documentation or optional test supplied without execution",
+      "distribution": "public_source"
+    },
+    {
+      "path": "plotting/spacing.py",
+      "sha256": "0b429bafb3d5d3f5c734be3e20561c60f37633dc949ca125352e94c88a930e29",
+      "bytes": 2082,
+      "inputs": [
+        {
+          "archive_relative_path": "coverage_M30000_manuscript_20260927/render_mechanisms.py",
+          "sha256": "ba478443d2bd663d4ca543f572216753918299a39293621264205210b9b2e02c",
+          "selection": "mechanical AST extraction: spaced_save, fix_annotation_separators"
+        }
+      ],
+      "adaptation": "Original plotting code or mechanically extracted functions; portable I/O, explicit adapter, manuscript/QA/private-path side effects removed. Packaged hash is after adaptation; upstream hash is before. Not executed.",
+      "distribution": "public_source"
+    },
+    {
+      "path": "plotting/static/draw_plate.py",
+      "sha256": "d437c2e5839ff4a49822bf9e64898656757daab517ea2dd99c5d71c42818f7c9",
+      "bytes": 3283,
+      "inputs": [
+        {
+          "archive_relative_path": "DPIM_CI_paper_used_only_20260804/02_figure_sources/mechanical_models/draw_plate_sfem_model.py",
+          "sha256": "e20fbd720ef0b374613e6ad84b418b3137b0f9e10e8f317ea889f9d2bb4731cd",
+          "selection": "byte-for-byte copy of approved source"
+        }
+      ],
+      "adaptation": "Original plotting code or mechanically extracted functions; portable I/O, explicit adapter, manuscript/QA/private-path side effects removed. Packaged hash is after adaptation; upstream hash is before. Not executed.",
+      "distribution": "public_source"
+    },
+    {
+      "path": "plotting/static/draw_transport.py",
+      "sha256": "0f70f9f90aae9daf64fc353cdbc7d62171ccd23cd6fd57fffb883fb257636b9f",
+      "bytes": 14418,
+      "inputs": [
+        {
+          "archive_relative_path": "deliverables/workflow_figure_revision_20260909/draw_transport.py",
+          "sha256": "d6141bfbc8892e65ee627134c5f80c65eb78faa7252d1ce69041e46b593f2f12",
+          "selection": "byte-for-byte copy of approved source"
+        }
+      ],
+      "adaptation": "Original plotting code or mechanically extracted functions; portable I/O, explicit adapter, manuscript/QA/private-path side effects removed. Packaged hash is after adaptation; upstream hash is before. Not executed.",
+      "distribution": "public_source"
+    },
+    {
+      "path": "plotting/static/euler_model.tex",
+      "sha256": "b93261e9581f4862b56d21b40de6f5f85980f8a874cf0c81cf724e40421de419",
+      "bytes": 1938,
+      "inputs": [
+        {
+          "archive_relative_path": "DPIM_CI_paper_used_only_20260804/02_figure_sources/mechanical_models/linear_euler_bernoulli_beam_model.tex",
+          "sha256": "b93261e9581f4862b56d21b40de6f5f85980f8a874cf0c81cf724e40421de419",
+          "selection": "byte-for-byte copy of approved source"
+        }
+      ],
+      "adaptation": "Original plotting code or mechanically extracted functions; portable I/O, explicit adapter, manuscript/QA/private-path side effects removed. Packaged hash is after adaptation; upstream hash is before. Not executed.",
+      "distribution": "public_source"
+    },
+    {
+      "path": "plotting/static/framework_geometry.py",
+      "sha256": "91500ba2ad3da8c64d7598bfdbb2e5d4506ab051aa930ea338b1a3bb8f6f5be7",
+      "bytes": 10023,
+      "inputs": [
+        {
+          "archive_relative_path": "figures/dpim_method_drafts_v2_20260928/draw_method_figures.py",
+          "sha256": "05e224448e79cef9088306dfed3772a78bf15920ba7bdc1179d0620fae5227c3",
+          "selection": "byte-for-byte copy of approved source"
+        }
+      ],
+      "adaptation": "Original plotting code or mechanically extracted functions; portable I/O, explicit adapter, manuscript/QA/private-path side effects removed. Packaged hash is after adaptation; upstream hash is before. Not executed.",
+      "distribution": "public_source"
+    },
+    {
+      "path": "plotting/static/framework_layout.py",
+      "sha256": "caeb6ac79a7c0c172119a7eb363559d1f053d0606a7c7707591959e707cec2eb",
+      "bytes": 2843,
+      "inputs": [
+        {
+          "archive_relative_path": "reports/framework_figure_fix_20260928/original_layout.py",
+          "sha256": "b4ab74ace40c66de29ebd639c0ca79e9f37aab8d4df1475851c7ae2688b9327a",
+          "selection": "byte-for-byte copy of approved source"
+        }
+      ],
+      "adaptation": "Original plotting code or mechanically extracted functions; portable I/O, explicit adapter, manuscript/QA/private-path side effects removed. Packaged hash is after adaptation; upstream hash is before. Not executed.",
+      "distribution": "public_source"
+    },
+    {
+      "path": "plotting/static/method_geometry.py",
+      "sha256": "6dcfbdba4191533f6bda897febaf5b33587d6e4ad5296545952e08c250c5fd91",
+      "bytes": 11106,
+      "inputs": [
+        {
+          "archive_relative_path": "figures/dpim_method_drafts_20260928/draw_method_figures.py",
+          "sha256": "2ce8d58fa76cd3fcb49f1e62cb42e7dd16b201d4b4101c7e63826244200aa428",
+          "selection": "byte-for-byte copy of approved source"
+        }
+      ],
+      "adaptation": "Original plotting code or mechanically extracted functions; portable I/O, explicit adapter, manuscript/QA/private-path side effects removed. Packaged hash is after adaptation; upstream hash is before. Not executed.",
+      "distribution": "public_source"
+    },
+    {
+      "path": "plotting/static/outer_overlay.tex",
+      "sha256": "20d55649c36fd381e473fa6166832409abd2085a57be910b400b05ca9605b786",
+      "bytes": 2072,
+      "inputs": [
+        {
+          "archive_relative_path": "deliverables/euler_analytic_full_manuscript_20260923/review_figures/workflow/real_data_outer_sample_workflow_latex.tex",
+          "sha256": "300a6f5d54ff99a1130b1119977ebf98b1dbc81d456ce40e027346489ab771fe",
+          "selection": "byte-for-byte copy of approved source"
+        }
+      ],
+      "adaptation": "Original plotting code or mechanically extracted functions; portable I/O, explicit adapter, manuscript/QA/private-path side effects removed. Packaged hash is after adaptation; upstream hash is before. Not executed.",
+      "distribution": "public_source"
+    },
+    {
+      "path": "plotting/static/outer_workflow.py",
+      "sha256": "d9a5453bdc104aa20e037c38072566652d74186628bef4944d22d1d7d8c8d055",
+      "bytes": 19657,
+      "inputs": [
+        {
+          "archive_relative_path": "tc_recalculation_20260922/plotting/plot_real_data_outer_sample_workflow.py",
+          "sha256": "85f78118a9c86eab6fc2b9352390e254447544f1606cda43b7ca3a0c856d1698",
+          "selection": "byte-for-byte copy of approved source"
+        }
+      ],
+      "adaptation": "Original plotting code or mechanically extracted functions; portable I/O, explicit adapter, manuscript/QA/private-path side effects removed. Packaged hash is after adaptation; upstream hash is before. Not executed.",
+      "distribution": "public_source"
+    },
+    {
+      "path": "plotting/static/shift_geometry.py",
+      "sha256": "a8ea959947dfaba817661bffe9f8ebbe5fa1444964c706247b83cb33ca3b7e47",
+      "bytes": 19223,
+      "inputs": [
+        {
+          "archive_relative_path": "figures/dpim_method_drafts_v6_20260928/draw_first_last_shift.py",
+          "sha256": "4c53e75b762b2e99584a07ec8032d5855941935be5844b6608caafa5efa8cb0b",
+          "selection": "byte-for-byte copy of approved source"
+        }
+      ],
+      "adaptation": "Original plotting code or mechanically extracted functions; portable I/O, explicit adapter, manuscript/QA/private-path side effects removed. Packaged hash is after adaptation; upstream hash is before. Not executed.",
+      "distribution": "public_source"
+    },
+    {
+      "path": "plotting/static/shift_layout.py",
+      "sha256": "4fddf6262ab9821425cbeb9f15875e04a079bba5dc16e0c70d8fc6485e60d0c4",
+      "bytes": 2961,
+      "inputs": [
+        {
+          "archive_relative_path": "reports/mechanism_arrow_tips_20260928/workflow.py",
+          "sha256": "f74c2dc2d786d8abfca0cf66911a7093c7a7f9052279d64ebc92e1df2e965453",
+          "selection": "byte-for-byte copy of approved source"
+        }
+      ],
+      "adaptation": "Original plotting code or mechanically extracted functions; portable I/O, explicit adapter, manuscript/QA/private-path side effects removed. Packaged hash is after adaptation; upstream hash is before. Not executed.",
+      "distribution": "public_source"
+    },
+    {
+      "path": "plotting/tables.py",
+      "sha256": "a3d324ddf3cba4ede2f51a55e63ea5c8b034ab605a7314a0d6e8c1abd127c257",
+      "bytes": 3078,
+      "inputs": [
+        {
+          "archive_relative_path": "reports/manuscript_structure_tables_20261012/make_tables.py",
+          "sha256": "ef4db4a7c203c41199286172a824a5aff6c7a14f9788ab9fc1d564b2a95ee87b",
+          "selection": "Table-formatting loop only; input redirected to archived126 rows, output to user-selected directory; removed paper writes/audit side effects"
+        }
+      ],
+      "adaptation": "Original plotting code or mechanically extracted functions; portable I/O, explicit adapter, manuscript/QA/private-path side effects removed. Packaged hash is after adaptation; upstream hash is before. Not executed.",
+      "distribution": "public_source"
+    }
+  ],
+  "assembled_utc": "2026-10-13T01:44:56.3926577Z",
+  "validation": {
+    "mode": "documentation_only_code_only_release",
+    "plots_run": false,
+    "matlab_run": false,
+    "experiments_run": false,
+    "tests_run": false,
+    "source_hashes": "Existing source provenance hashes retained; no source files edited or hashes recomputed in this revision"
+  },
+  "scope_note": "This manifest indexes public plotting source code and TeX only. Tests, documentation, registries and all data/PDF assets are excluded from files.",
+  "release_mode": "code_only_no_data_distribution",
+  "historical_extraction_source": "plotting/prepare_publication.py",
+  "historical_extraction_note": "Source retained for provenance only. It reads a user-owned local archive and can copy data when explicitly run; it is not a code-only publication step and was not executed in this revision.",
+  "external_input_specification": "provenance/figure_table_registry.json",
+  "external_input_documentation": "docs/figures.md"
+}

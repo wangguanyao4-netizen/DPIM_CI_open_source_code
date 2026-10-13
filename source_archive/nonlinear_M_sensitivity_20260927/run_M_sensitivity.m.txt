@@ -1,0 +1,104 @@
+function run_M_sensitivity(mode)
+% Extend coverage trials only; archived curves and the target stay unchanged.
+if nargin<1,mode="run";end
+root=fileparts(mfilename('fullpath'));repo=fileparts(root);
+code=fullfile(repo,'tc_recalculation_20260922');addpath(code);
+maxNumCompThreads(2);setenv('OMP_NUM_THREADS','2');setenv('OPENBLAS_NUM_THREADS','2');
+source=fullfile(repo,'pool_expansion_30000_20260926','nonlinear','results');
+a=load(fullfile(source,'pool_complete.mat'));q=a.pool(:,202:226);cfg=a.cfg;clear a;
+assert(cfg.P==30000&&cfg.n==768&&cfg.B==399&&cfg.M==5000&&~cfg.centering);
+assert(isequal(cfg.R,[16,128])&&isequal(size(q),[30000,25]));
+baseline=readtable(fullfile(source,'P30000','nested_M_pointwise_coverage.csv'),TextType='string',Delimiter=',');
+Mlist=[5000,10000,20000];methods=["Student t","percentile bootstrap","bootstrap-t"];
+target=20000;G=25;truth=reshape(cfg.truth,1,[]);rows=table();blocks=table();
+saveAtomic(fullfile(root,'configuration.mat'),struct('cfg',cfg,'Mlist',Mlist,'retained_M',5000));
+wall=tic;newCompleted=0;
+for R=cfg.R
+    folder=fullfile(root,sprintf('R%d',R));if ~isfolder(folder),mkdir(folder);end
+    lo=zeros(target,3,G);hi=lo;
+    for trial=[1,5000]
+        first=100*floor((trial-1)/100)+1;last=first+99;
+        archived=load(fullfile(source,'P30000',sprintf('R%d',R),sprintf('batch_%05d_%05d.mat',first,last)));
+        ci=interval(q,cfg,R,trial);j=trial-first+1;
+        assert(isequaln(reshape(archived.lower(j,:,:),3,G),ci.lower));
+        assert(isequaln(reshape(archived.upper(j,:,:),3,G),ci.upper));
+    end
+    fprintf('PREFLIGHT R=%d exact archived intervals reproduced\n',R);
+    if mode=="preflight",continue;end
+    assert(mode=="run");
+    for first=1:100:target
+        last=first+99;name=sprintf('batch_%05d_%05d.mat',first,last);
+        if last<=5000
+            a=load(fullfile(source,'P30000',sprintf('R%d',R),name));
+        else
+            file=fullfile(folder,name);
+            if isfile(file),a=load(file);
+            else
+                t=tic;a=struct('first',first,'last',last,'P',cfg.P,'R',R, ...
+                    'lower',zeros(100,3,G),'upper',zeros(100,3,G), ...
+                    'zero',zeros(100,G),'ties',zeros(100,G));
+                for trial=first:last
+                    ci=interval(q,cfg,R,trial);j=trial-first+1;
+                    a.lower(j,:,:)=ci.lower;a.upper(j,:,:)=ci.upper;
+                    a.zero(j,:)=ci.zero_bootstrap_variance;a.ties(j,:)=ci.bootstrap_mean_ties;
+                end
+                a.seconds=toc(t);saveAtomic(file,a);
+            end
+            newCompleted=newCompleted+100;
+        end
+        assert(a.first==first&&a.last==last&&a.R==R&&a.P==30000);
+        assert(~any(isnan(a.lower),'all')&&~any(isnan(a.upper),'all')&&all(a.lower<=a.upper,'all'));
+        lo(first:last,:,:)=a.lower;hi(first:last,:,:)=a.upper;
+        if mod(last,1000)==0
+            progress(root,R,last,newCompleted,toc(wall));
+            fprintf('R=%d trials=%d/%d new_total=%d/30000 elapsed=%.1f\n',R,last,target,newCompleted,toc(wall));
+        end
+    end
+    for M=Mlist
+        for j=1:3
+            b=sortrows(baseline(baseline.R==R&baseline.method==methods(j),:),'y');assert(height(b)==G);
+            lower=reshape(lo(1:M,j,:),M,G);upper=reshape(hi(1:M,j,:),M,G);
+            b.M(:)=M;b.hit_count=sum(lower<=truth&truth<=upper,1).';b.coverage=b.hit_count/M;
+            b.cp95_lower=zeros(G,1);b.cp95_upper=ones(G,1);
+            use=b.hit_count>0;b.cp95_lower(use)=betaincinv(.025,b.hit_count(use),M-b.hit_count(use)+1);
+            use=b.hit_count<M;b.cp95_upper(use)=betaincinv(.975,b.hit_count(use)+1,M-b.hit_count(use));
+            rows=[rows;b]; %#ok<AGROW>
+        end
+    end
+    for first=1:5000:target
+        last=first+4999;
+        for j=1:3
+            lower=reshape(lo(first:last,j,:),5000,G);upper=reshape(hi(first:last,j,:),5000,G);
+            hit=sum(lower<=truth&truth<=upper,1).';
+            b=table(repmat(R,G,1),repmat(methods(j),G,1),repmat(first,G,1),repmat(last,G,1), ...
+                cfg.coverage_grid(:),hit,hit/5000,'VariableNames',{'R','method','first','last','y','hit_count','coverage'});
+            blocks=[blocks;b]; %#ok<AGROW>
+        end
+    end
+end
+if mode=="preflight",return;end
+writetable(rows,fullfile(root,'nested_M_pointwise_coverage.csv'));
+writetable(blocks,fullfile(root,'disjoint_5000_blocks.csv'));
+progress(root,128,target,30000,toc(wall));
+fprintf('M SENSITIVITY NUMERICS COMPLETE\n');
+end
+
+function ci=interval(q,cfg,R,trial)
+s=RandStream('Threefry',Seed=cfg.pool_draw_seed);s.Substream=trial;
+indices=floor(rand(s,128,1)*cfg.P)+1;
+ci=tc_intervals_from_original(q(indices(1:R),:),cfg.B,.05,R*10000+trial,cfg.bootstrap_seed);
+end
+
+function saveAtomic(file,payload)
+if isfile(file),a=load(file);assert(isequaln(a,payload));return;end
+temp=[char(file),'.writing.mat'];assert(~isfile(temp),'Inspect partial file: %s',temp);
+save(temp,'-struct','payload','-v7');a=load(temp);assert(isequaln(a,payload));
+[ok,msg]=movefile(temp,file);assert(ok,msg);
+end
+
+function progress(root,R,last,newCompleted,elapsed)
+s=struct('phase','coverage','R',R,'M_completed',last,'M_target',20000,'new_completed',newCompleted, ...
+    'new_target',30000,'elapsed_seconds',elapsed,'updated_at',char(datetime('now','Format','yyyy-MM-dd HH:mm:ss')),'paper_changed',false);
+temp=fullfile(root,'progress.json.writing');fid=fopen(temp,'w');assert(fid>=0);fwrite(fid,jsonencode(s));fclose(fid);
+jsondecode(fileread(temp));movefile(temp,fullfile(root,'progress.json'),'f');
+end

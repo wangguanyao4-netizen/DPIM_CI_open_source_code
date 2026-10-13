@@ -1,0 +1,185 @@
+"""Recount every interval and freeze the manuscript data at M=30000."""
+from pathlib import Path
+from datetime import datetime, timezone
+import argparse
+import hashlib
+import json
+import numpy as np
+import pandas as pd
+from scipy.io import loadmat
+from scipy.stats import beta, norm
+
+ROOT=Path(__file__).resolve().parent
+REPO=ROOT.parent
+OLD=REPO/'coverage_M20000_manuscript_20260927/publication_data'
+CODE=REPO/'tc_recalculation_20260922'
+METHODS=['Student t','percentile bootstrap','bootstrap-t']
+
+
+def sha(p):
+    h=hashlib.sha256()
+    with p.open('rb') as f:
+        for b in iter(lambda:f.read(8*1024*1024),b''):h.update(b)
+    return h.hexdigest()
+
+
+def prepare():
+    paths=list((REPO/'deliverables/dpim_pool30000_M20000_manuscript_20260927/compile_package').rglob('*'))
+    paths=[p for p in paths if p.is_file()]
+    paths += [CODE/'tc_intervals_from_original.m',CODE/'run_euler_separation.m']
+    paths += list((CODE/'results/euler_target_pool_separation_20260923').glob('batch_*.mat'))
+    for model in ['linear','plate','nonlinear']:
+        d=REPO/'pool_expansion_30000_20260926'/model/'results'
+        paths += [d/'pool_complete.mat',d/'P30000/nested_M_pointwise_coverage.csv']
+        paths += list((d/'P30000').glob('R*/batch_*.mat'))
+    paths += list(OLD.glob('*.csv'))
+    previous=REPO/'coverage_M20000_manuscript_20260927'
+    paths += list(previous.glob('linear_fresh/batch_*.mat'))
+    paths += list(previous.glob('*_pool/R*/batch_*.mat'))
+    paths += list((REPO/'nonlinear_M_sensitivity_20260927').glob('R*/batch_*.mat'))
+    for model in ['linear','nonlinear']:
+        for n in [192,384,768]:
+            folder=REPO/f'paper_refresh_30000_20260926/results/n_study/{model}_rqmc_n{n}'
+            paths += [folder/'pool_complete.mat',folder/'coverage.csv']
+            paths += list(folder.glob('coverage_*.mat'))
+    out=ROOT/'protected_inputs.json'
+    assert not out.exists()
+    out.write_text(json.dumps({str(p):sha(p) for p in paths},indent=2))
+    print('Protected',len(paths),'inputs; original manuscript and results remain read only.')
+
+
+def main(main_only=False):
+    protected=json.loads((ROOT/'protected_inputs.json').read_text())
+    for name,digest in protected.items():assert sha(Path(name))==digest,name
+    primary_old=pd.read_csv(OLD/'nested_M_pointwise_coverage.csv')
+    pool_old=pd.read_csv(OLD/'nested_M_all_comparisons.csv')
+    pool_old=pool_old[(pool_old.M==20000)&((pool_old.model!='linear')|(pool_old.dataset=='euler_pool_control'))]
+    staged=[];records=[];blocks=[]
+    for model,kind in [('linear','fresh'),('linear','pool'),('nonlinear','pool'),('plate','pool')]:
+        baseline=(primary_old if kind=='fresh' else pool_old)
+        baseline=baseline[baseline.model==model].copy()
+        rlist=sorted(baseline.R.unique());grid=np.sort(baseline.y.unique())
+        truth=baseline[(baseline.R==rlist[0])&(baseline.method==METHODS[0])].sort_values('y').truth.to_numpy()
+        if model=='linear':assert np.allclose(truth,norm.pdf(grid,scale=np.sqrt(1+.08**2)),atol=1e-14,rtol=0)
+        stride=50 if kind=='fresh' else 100
+        lo=np.empty((30000,2,3,25));hi=lo.copy()
+        for ir,R in enumerate(rlist):
+            for first in range(1,30001,stride):
+                last=first+stride-1;name=f'batch_{first:05d}_{last:05d}.mat'
+                if kind=='fresh':
+                    folder=(CODE/'results/euler_target_pool_separation_20260923' if last<=5000 else REPO/'coverage_M20000_manuscript_20260927/linear_fresh' if last<=20000 else ROOT/'linear_fresh')
+                else:
+                    folder=(REPO/'pool_expansion_30000_20260926'/model/'results/P30000'/f'R{R}' if last<=5000 else
+                            REPO/'nonlinear_M_sensitivity_20260927'/f'R{R}' if last<=20000 and model=='nonlinear' else REPO/'coverage_M20000_manuscript_20260927'/f'{model}_pool'/f'R{R}' if last<=20000 else ROOT/f'{model}_pool'/f'R{R}')
+                p=folder/name
+                a=loadmat(p,simplify_cells=True)
+                assert a['first']==first and a['last']==last
+                low=a['lower'][:,ir] if kind=='fresh' else a['lower']
+                high=a['upper'][:,ir] if kind=='fresh' else a['upper']
+                assert low.shape==(stride,3,25) and not np.isnan(low).any() and not np.isnan(high).any()
+                assert np.all(low<=high)
+                if kind=='fresh':assert np.isfinite(a['qSaved']).all() and a['qSaved'].shape==(128,25,stride)
+                else:assert a['P']==30000 and a['R']==R
+                lo[first-1:last,ir]=low;hi[first-1:last,ir]=high
+                if kind!='fresh' or ir==0:records.append(dict(path=str(p),sha256=sha(p),first=first,last=last))
+            for im,method in enumerate(METHODS):
+                d=baseline[(baseline.R==R)&(baseline.method==method)].sort_values('y').copy()
+                hit=(lo[:,ir,im]<=truth)&(truth<=hi[:,ir,im])
+                assert np.array_equal(hit[:20000].sum(0),d.hit_count), (model,kind,R,method)
+                for M in [20000,30000]:
+                    b=d.copy();b['M']=M;b['hit_count']=hit[:M].sum(0);b['coverage']=b.hit_count/M
+                    k=b.hit_count.to_numpy();low=np.zeros(25);high=np.ones(25)
+                    use=k>0;low[use]=beta.ppf(.025,k[use],M-k[use]+1)
+                    use=k<M;high[use]=beta.ppf(.975,k[use]+1,M-k[use])
+                    b['cp95_lower']=low;b['cp95_upper']=high
+                    b['experiment_type']='fresh_independent' if kind=='fresh' else 'fixed_pool'
+                    b['dataset']='primary' if model!='linear' or kind=='fresh' else 'euler_pool_control'
+                    staged.append(b)
+                for start in range(0,30000,5000):
+                    for y,k in zip(grid,hit[start:start+5000].sum(0)):
+                        blocks.append(dict(model=model,kind=kind,R=R,method=method,first=start+1,last=start+5000,y=y,hit_count=int(k),coverage=k/5000))
+        print('Recounted',model,kind,'all 30000 trials for both R values')
+    data=ROOT/'publication_data';data.mkdir(exist_ok=True)
+    allrows=pd.concat(staged,ignore_index=True)
+    allrows.to_csv(data/'nested_M_all_comparisons.csv',index=False)
+    main=allrows[(allrows.M==30000)&(allrows.dataset=='primary')].copy()
+    assert len(main)==450 and len(allrows)==1200
+    nonlinear=pd.read_csv(REPO/'nonlinear_M_sensitivity_20260927/nested_M_pointwise_coverage.csv')
+    left=allrows[(allrows.model=='nonlinear')&(allrows.M==20000)].sort_values(['R','method','y'])
+    right=nonlinear[nonlinear.M==20000].sort_values(['R','method','y'])
+    for col in ['hit_count','coverage','formula_prediction','truth']:
+        assert np.allclose(left[col],right[col],atol=1e-13,rtol=0),col
+    main.to_csv(data/'nested_M_pointwise_coverage.csv',index=False)
+    if not main_only:records.extend(audit_internal(data))
+    pd.DataFrame(blocks).to_csv(data/'disjoint_5000_blocks.csv',index=False)
+    summary=[]
+    for (dataset,model,method,R,M),d in allrows.groupby(['dataset','model','method','R','M']):
+        summary.append(dict(dataset=dataset,model=model,method=method,R=R,M=M,mean_coverage=d.coverage.mean(),
+            mean_formula=d.formula_prediction.mean(),rmse=np.sqrt(np.mean((d.coverage-d.formula_prediction)**2)),
+            mean_absolute_nominal_error=np.mean(abs(d.coverage-.95)),mean_absolute_formula_error=np.mean(abs(d.formula_prediction-.95)),
+            mean_cp_width=(d.cp95_upper-d.cp95_lower).mean()))
+    pd.DataFrame(summary).to_csv(data/'coverage_summary.csv',index=False)
+    for model in ['linear','nonlinear','plate']:
+        folder=data/f'plot_{model}';folder.mkdir(exist_ok=True)
+        d=main[main.model==model].copy()
+        if model=='linear':d=d.drop(columns='experiment_type')
+        d.to_csv(folder/'nested_M_pointwise_coverage.csv',index=False)
+    assert not list(ROOT.rglob('*.writing.mat'))
+    report=dict(status='main_passed_internal_pending' if main_only else 'passed',created_at=datetime.now(timezone.utc).isoformat(),M=30000,P=30000,
+        original_20000_prefixes_identical=True,reference_and_formula_unchanged=True,centering=False,
+        primary_rows=450,comparisons_rows=1200,euler_fresh=True,nonlinear_first_M20000_preserved=True,
+        internal_n_study_M=30000,internal_n_audit_complete=not main_only,internal_n_original_400_preserved=not main_only,protected_inputs_verified=len(protected),batches=records)
+    (ROOT/'audit_manifest.json').write_text(json.dumps(report,indent=2))
+    print(pd.DataFrame(summary).query('M==30000').to_string(index=False))
+
+
+def audit_internal(data):
+    rows=[];records=[];summaries=[]
+    for model in ['linear','nonlinear']:
+        for n in [192,384,768]:
+            name=f'{model}_rqmc_n{n}'
+            source=REPO/'paper_refresh_30000_20260926/results/n_study'/name
+            design=loadmat(CODE/'results/paper_scale_original_grid_20260922/n_study'/name/'design.mat',simplify_cells=True)['design']
+            keys=set()
+            for trial in range(1,30001):
+                block=(trial-1)//9999;index=(trial-1)%9999+1;seed=20260923+100000000*block
+                for stage in [1,2]:
+                    key=int((((stage*1000+design['code'])*32768+n)*2048+128)*10000+index+1)
+                    assert key<2**53 and (seed,key) not in keys
+                    keys.add((seed,key))
+            assert len(keys)==60000
+            baseline=pd.read_csv(source/'coverage.csv')
+            assert len(baseline)==243 and (baseline.M==400).all() and (baseline.P==30000).all()
+            truth=baseline[baseline.method==METHODS[0]].sort_values('y').truth.to_numpy()
+            if model=='linear':assert np.allclose(truth,norm.pdf(np.sort(baseline.y.unique()),scale=np.sqrt(1+.08**2)),atol=1e-14,rtol=0)
+            hits=np.zeros((3,81),dtype=np.int64);prefix=hits.copy()
+            for first in range(1,30001,100):
+                last=first+99
+                p=source/f'coverage_{first:04d}_{last:04d}.mat' if last<=400 else ROOT/'n_study'/name/f'coverage_{first:05d}_{last:05d}.mat'
+                a=loadmat(p,simplify_cells=True);lo=a['lower'];hi=a['upper']
+                assert a['first']==first and a['last']==last and lo.shape==(100,3,81)
+                assert not np.isnan(lo).any() and not np.isnan(hi).any() and np.all(lo<=hi)
+                assert a['indices'].shape==(100,128) and a['indices'].min()>=1 and a['indices'].max()<=30000
+                hit=((lo<=truth)&(truth<=hi)).sum(0);hits+=hit
+                if last<=400:prefix+=hit
+                records.append(dict(path=str(p),sha256=sha(p),first=first,last=last))
+            for im,method in enumerate(METHODS):
+                b=baseline[baseline.method==method].sort_values('y').copy()
+                assert np.array_equal(prefix[im],b.hit_count),(model,n,method)
+                b['M']=30000;b['hit_count']=hits[im];b['coverage']=hits[im]/30000
+                k=hits[im];low=np.zeros(81);high=np.ones(81)
+                use=k>0;low[use]=beta.ppf(.025,k[use],30000-k[use]+1)
+                use=k<30000;high[use]=beta.ppf(.975,k[use]+1,30000-k[use])
+                b['cp95_lower']=low;b['cp95_upper']=high;rows.append(b)
+                summaries.append(dict(model=model,n=n,method=method,M=30000,mean_coverage=b.coverage.mean(),
+                    mean_absolute_nominal_error=np.mean(abs(b.coverage-.95)),rmse=np.sqrt(np.mean((b.coverage-b.formula_prediction)**2))))
+            print('Recounted n-study',name,'all 30000 trials')
+    frame=pd.concat(rows,ignore_index=True);assert len(frame)==1458
+    frame.to_csv(data/'n_uncentered_coverage_results.csv',index=False)
+    pd.DataFrame(summaries).to_csv(data/'n_study_summary.csv',index=False)
+    return records
+
+
+if __name__=='__main__':
+    parser=argparse.ArgumentParser();parser.add_argument('--prepare',action='store_true');parser.add_argument('--main-only',action='store_true');args=parser.parse_args()
+    prepare() if args.prepare else main(main_only=args.main_only)

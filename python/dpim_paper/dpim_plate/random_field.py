@@ -1,0 +1,98 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+import numpy as np
+from numpy.typing import NDArray
+from scipy.linalg import eigh
+
+FloatArray = NDArray[np.float64]
+
+
+@dataclass(frozen=True, slots=True)
+class KLAudit:
+    retained_energy_ratio: float
+    smallest_retained_eigenvalue: float
+    largest_eigenvalue: float
+    min_elastic_modulus: float
+    max_elastic_modulus: float
+
+
+def _canonicalize_eigenvector_signs(vectors: FloatArray) -> FloatArray:
+    vectors = np.array(vectors, copy=True)
+    for j in range(vectors.shape[1]):
+        pivot = int(np.argmax(np.abs(vectors[:, j])))
+        if vectors[pivot, j] < 0:
+            vectors[:, j] *= -1.0
+    return vectors
+
+
+def generate_elastic_field(
+    theta: FloatArray,
+    eval_nodes: FloatArray,
+    *,
+    seed: int,
+    support_count: int = 800,
+    modes: int = 10,
+    corr_x: float = 0.8,
+    corr_y: float = 0.8,
+    mean: float = 2.184e11,
+    std: float = 2.184e10,
+) -> tuple[FloatArray, FloatArray, KLAudit]:
+    """Generate nodal elastic moduli and the nodal modal coefficient matrix.
+
+    Returns ``elastic`` with shape ``n_nodes x n_samples`` and ``b_eval`` with
+    shape ``n_nodes x modes`` such that
+    ``elastic = mean + std * b_eval @ theta.T``.
+    """
+    theta = np.asarray(theta, dtype=np.float64)
+    eval_nodes = np.asarray(eval_nodes, dtype=np.float64)
+    if theta.ndim != 2 or theta.shape[1] != modes:
+        raise ValueError(f"theta must have shape n x {modes}")
+    if eval_nodes.ndim != 2 or eval_nodes.shape[1] != 2:
+        raise ValueError("eval_nodes must have shape K x 2")
+    if support_count <= modes:
+        raise ValueError("support_count must exceed the number of retained modes")
+
+    rng = np.random.Generator(np.random.MT19937(seed))
+    x_support = rng.random(support_count, dtype=np.float64)
+    y_support = rng.random(support_count, dtype=np.float64)
+
+    dx = np.abs(x_support[:, None] - x_support[None, :])
+    dy = np.abs(y_support[:, None] - y_support[None, :])
+    covariance = np.exp(-dx / corr_x) * np.exp(-dy / corr_y)
+    covariance = 0.5 * (covariance + covariance.T)
+    np.fill_diagonal(covariance, 1.0)
+
+    lo = support_count - modes
+    eigenvalues, eigenvectors = eigh(
+        covariance,
+        subset_by_index=(lo, support_count - 1),
+        driver="evr",
+        check_finite=False,
+        overwrite_a=True,
+    )
+    order = np.argsort(eigenvalues)[::-1]
+    eigenvalues = np.maximum(eigenvalues[order], 0.0)
+    eigenvectors = _canonicalize_eigenvector_signs(eigenvectors[:, order])
+    if eigenvalues[-1] <= np.finfo(np.float64).eps * eigenvalues[0]:
+        raise np.linalg.LinAlgError("KL retained eigenvalue is numerically zero")
+
+    rho = np.exp(-np.abs(eval_nodes[:, 0, None] - x_support[None, :]) / corr_x)
+    rho *= np.exp(-np.abs(eval_nodes[:, 1, None] - y_support[None, :]) / corr_y)
+    b_eval = (rho @ eigenvectors) / np.sqrt(eigenvalues)[None, :]
+    standardized = b_eval @ theta.T
+    elastic = mean + std * standardized
+
+    # The original code reports energy relative to all eigenvalues.  Computing
+    # all 800 values solely for that diagnostic would dominate the port, so the
+    # audit records a conservative lower bound using trace(R)=support_count.
+    energy_ratio = float(eigenvalues.sum() / support_count)
+    audit = KLAudit(
+        retained_energy_ratio=energy_ratio,
+        smallest_retained_eigenvalue=float(eigenvalues[-1]),
+        largest_eigenvalue=float(eigenvalues[0]),
+        min_elastic_modulus=float(elastic.min()),
+        max_elastic_modulus=float(elastic.max()),
+    )
+    return elastic, b_eval, audit

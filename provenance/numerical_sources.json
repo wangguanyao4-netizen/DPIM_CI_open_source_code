@@ -1,0 +1,255 @@
+{
+  "scope": "Current manuscript numerical production chain",
+  "source_files": [
+    {
+      "source_id": "tc_recalculation_20260922/run_tc_campaign.m",
+      "published_path": "source_archive/tc_recalculation_20260922/run_tc_campaign.m.txt",
+      "original_sha256": "3a3f6b383204d59160dc760975ee5383c0c203188a03ca7106409f61ba4c80e9",
+      "published_sha256": "3f7c29696005d2e76509241187fadabb075254628b496ff298e76579b4fd576b",
+      "edits": "Machine-specific path literals redacted; non-executable source archive"
+    },
+    {
+      "source_id": "tc_recalculation_20260922/run_tc_paper_scale.m",
+      "published_path": "source_archive/tc_recalculation_20260922/run_tc_paper_scale.m.txt",
+      "original_sha256": "ff3362af67321b1292ccf4f8be00c45f9522cbdfc81858f0e859597e5c1aa4a7",
+      "published_sha256": "4a3f2be0d34dc6b949a771202e77b86e398e36ddf3e0e5d91f0cb2f30cada954",
+      "edits": "Machine-specific path literals redacted; non-executable source archive"
+    },
+    {
+      "source_id": "tc_recalculation_20260922/tc_intervals_from_original.m",
+      "published_path": "source_archive/tc_recalculation_20260922/tc_intervals_from_original.m.txt",
+      "original_sha256": "2dd927d5de146f990a73c15f537be3065db9ae3d2b02645915b9a26ccda0a349",
+      "published_sha256": "7454ba7bca81e06069b81b06786db25102c94bc7c6c436a98c765459b2c1061d",
+      "edits": "Machine-specific path literals redacted; non-executable source archive"
+    },
+    {
+      "source_id": "tc_recalculation_20260922/tc_bridge.py",
+      "published_path": "source_archive/tc_recalculation_20260922/tc_bridge.py.txt",
+      "original_sha256": "edc89196eb62a1cdc8f89974851e3e211fe27463548d898c97a6258133c0c5dd",
+      "published_sha256": "fc26d49c4b5685cde9ce7a899d6f642abf6e69b91aa479c645ea8e249973f063",
+      "edits": "Machine-specific path literals redacted; non-executable source archive"
+    },
+    {
+      "source_id": "tc_recalculation_20260922/vendor/coverage_coefficients.py",
+      "published_path": "source_archive/tc_recalculation_20260922/vendor/coverage_coefficients.py.txt",
+      "original_sha256": "66ef5a9aa8b5841265186701d02d4ca2c5f61e8c6b75d48e397963f9d6829ca8",
+      "published_sha256": "6a3ca25de41c1e407fc001c96ea4fe69ebcd744a348c6c1c23bafb654e7b2390",
+      "edits": "Machine-specific path literals redacted; non-executable source archive"
+    },
+    {
+      "source_id": "tc_recalculation_20260922/vendor/dpim_plate/__init__.py",
+      "published_path": "source_archive/tc_recalculation_20260922/vendor/dpim_plate/__init__.py.txt",
+      "original_sha256": "8b2a9a35bec136632a2c954d95a3471a918edc2b66077bb0912f4b078dc9eb59",
+      "published_sha256": "bbc5722aef151145705a4033afb121c2e566fa54950bb842de02c1c3eb090caa",
+      "edits": "Machine-specific path literals redacted; non-executable source archive"
+    },
+    {
+      "source_id": "tc_recalculation_20260922/vendor/dpim_plate/fem.py",
+      "published_path": "source_archive/tc_recalculation_20260922/vendor/dpim_plate/fem.py.txt",
+      "original_sha256": "29b8b8206eadaa90ae301e99609a223cf7546df69b41d206cb742d2afe05cec5",
+      "published_sha256": "23ea2d02ba4105c4c902a2528a0c99ab8429d88658102b2196c26073366b07c4",
+      "edits": "Machine-specific path literals redacted; non-executable source archive"
+    },
+    {
+      "source_id": "tc_recalculation_20260922/vendor/dpim_plate/random_field.py",
+      "published_path": "source_archive/tc_recalculation_20260922/vendor/dpim_plate/random_field.py.txt",
+      "original_sha256": "56fd79c9a8ec8588b096f3e8b169cfc4134876c80d666bc62d5b255516de0155",
+      "published_sha256": "f9d44a39d887cfd27f5452ed1225a8468738062a2cf76eb0b51feab030770479",
+      "edits": "Machine-specific path literals redacted; non-executable source archive"
+    },
+    {
+      "source_id": "tc_recalculation_20260922/run_euler_separation.m",
+      "published_path": "source_archive/tc_recalculation_20260922/run_euler_separation.m.txt",
+      "original_sha256": "ea156abd600baa80e577c69afb7f890199777a3fbb95831b3539c034496fe60a",
+      "published_sha256": "2194d42d84998aa9b087e765e28b30046a07f011888c6c905bbbe2d67bb59255",
+      "edits": "Machine-specific path literals redacted; non-executable source archive"
+    },
+    {
+      "source_id": "tc_recalculation_20260922/run_plate_rqmc_reference.m",
+      "published_path": "source_archive/tc_recalculation_20260922/run_plate_rqmc_reference.m.txt",
+      "original_sha256": "2ee44431e846cd8a73da572b40fca91cebe0953d349ac212abd22d91a9d61383",
+      "published_sha256": "c59ea1fe15443b5327c37f5972366aab1eb58efa3e408dffbf526673b89574a6",
+      "edits": "Machine-specific path literals redacted; non-executable source archive"
+    },
+    {
+      "source_id": "tc_recalculation_20260922/run_reference_expansion.m",
+      "published_path": "source_archive/tc_recalculation_20260922/run_reference_expansion.m.txt",
+      "original_sha256": "a66942e412f4db7c8f717a3582575e9a3bc074a9f946437c973dda4953cf8f33",
+      "published_sha256": "494e5a59622ac36eb09c86db35fc1418611a5b049a6f3eb4de0a39f7fb180fca",
+      "edits": "Machine-specific path literals redacted; non-executable source archive"
+    },
+    {
+      "source_id": "tc_recalculation_20260922/regrid_manuscript_references.m",
+      "published_path": "source_archive/tc_recalculation_20260922/regrid_manuscript_references.m.txt",
+      "original_sha256": "7e7c7af46abf8289c2b22c09292edfafff67b2239535867f7b5f350c3cbefeee",
+      "published_sha256": "799a81e757fcb1600f60ea165e83a7fa119fa045b40152eaee1a1c5309f197be",
+      "edits": "Machine-specific path literals redacted; non-executable source archive"
+    },
+    {
+      "source_id": "beam_nonlinear_pool_expansion_20260925/run_pool_expansion.m",
+      "published_path": "source_archive/beam_nonlinear_pool_expansion_20260925/run_pool_expansion.m.txt",
+      "original_sha256": "4ce74cf4fd83d256ee69af652d15c610330b64000d9bc6e05b7b00d2f3c00072",
+      "published_sha256": "602eb0f00997fcc4c1806bce63c80942642d479ebb7c81dbbbbdfdf02547b28f",
+      "edits": "Machine-specific path literals redacted; non-executable source archive"
+    },
+    {
+      "source_id": "plate_pool_expansion_20260925/run_plate_pool_expansion.m",
+      "published_path": "source_archive/plate_pool_expansion_20260925/run_plate_pool_expansion.m.txt",
+      "original_sha256": "d78dfe10f64ec8e30b4e49c1b0b47d97bc5eb5adc9ab636d8b61573cd01b008c",
+      "published_sha256": "bd5235bea9d593c23cace93a37ec7553a39fdd6761f59fcf1b452d5b1e2a71ab",
+      "edits": "Machine-specific path literals redacted; non-executable source archive"
+    },
+    {
+      "source_id": "pool_expansion_30000_20260926/run_small_pool_30000.m",
+      "published_path": "source_archive/pool_expansion_30000_20260926/run_small_pool_30000.m.txt",
+      "original_sha256": "b3050693ed59470265a7abdedcd25d3cbe02843c1b1d296ef84125aa44a13f7e",
+      "published_sha256": "fe5b2acd1d54c46d40386a24b25ea09efb6078f005dc750317fa0bf8e00a4f61",
+      "edits": "Machine-specific path literals redacted; non-executable source archive"
+    },
+    {
+      "source_id": "pool_expansion_30000_20260926/run_plate_pool_30000.m",
+      "published_path": "source_archive/pool_expansion_30000_20260926/run_plate_pool_30000.m.txt",
+      "original_sha256": "4d4f08aad5a220ddd3a0fa85034455be8e0e1263a82d0353984f700247a9209a",
+      "published_sha256": "9aff4826242e60db67b13a032b11a4accf4ffb2bf7b8c8ff5c2b0181e4e8018f",
+      "edits": "Machine-specific path literals redacted; non-executable source archive"
+    },
+    {
+      "source_id": "reference_expansion_20260925/run_plate_reference_large.m",
+      "published_path": "source_archive/reference_expansion_20260925/run_plate_reference_large.m.txt",
+      "original_sha256": "d51379ee58a10d41607b2e7611d3e35a59468105d265d6c76620753ac412809c",
+      "published_sha256": "90ae488b8324c58631c7e6afc87780e3f72649c46ab11be7c905de4ac1417f37",
+      "edits": "Machine-specific path literals redacted; non-executable source archive"
+    },
+    {
+      "source_id": "reference_expansion_2m_20260925/run_plate_reference_2m.m",
+      "published_path": "source_archive/reference_expansion_2m_20260925/run_plate_reference_2m.m.txt",
+      "original_sha256": "4d206575412df4f131de21460cc37f8f7a9a738275e96a1cde8ae9f98e28a75b",
+      "published_sha256": "c39b48f18dfbf7c5943dde8566987483e29495cb4adf4c3427f839bd4d6d3fd4",
+      "edits": "Machine-specific path literals redacted; non-executable source archive"
+    },
+    {
+      "source_id": "paper_refresh_30000_20260926/run_supplement.m",
+      "published_path": "source_archive/paper_refresh_30000_20260926/run_supplement.m.txt",
+      "original_sha256": "c0a2305e5050c7f0c2b927dfed430f2fa6e2d30223a17f04b3e912d3c5c7cb04",
+      "published_sha256": "1fd8e4bdff9d75ac7f2aa14be1dd5f0fb0f3462807db401771c776cd4b244317",
+      "edits": "Machine-specific path literals redacted; non-executable source archive"
+    },
+    {
+      "source_id": "coverage_M20000_manuscript_20260927/run_remaining_M.m",
+      "published_path": "source_archive/coverage_M20000_manuscript_20260927/run_remaining_M.m.txt",
+      "original_sha256": "3644f67786bde1ddf6e3000855cbcfcd4284d7105526119aab0488d96b3a3bd8",
+      "published_sha256": "64a7f222d921fabb9bfb987396a368484adc8bf6a6110fc5ef21b1702482e0a7",
+      "edits": "Machine-specific path literals redacted; non-executable source archive"
+    },
+    {
+      "source_id": "coverage_M30000_manuscript_20260927/run_all_M30000.m",
+      "published_path": "source_archive/coverage_M30000_manuscript_20260927/run_all_M30000.m.txt",
+      "original_sha256": "9456bdadb78c5311b4e93456ef499cdf3420824ddc454564f9c31e95c7788d2b",
+      "published_sha256": "f13a9ef55631816a7ca4d7b619f5f3abbf32d4c46b9f7f47f7f05870e807eefc",
+      "edits": "Machine-specific path literals redacted; non-executable source archive"
+    },
+    {
+      "source_id": "nonlinear_M_sensitivity_20260927/run_M_sensitivity.m",
+      "published_path": "source_archive/nonlinear_M_sensitivity_20260927/run_M_sensitivity.m.txt",
+      "original_sha256": "e03a3da13c475d4a10630c381bbb31ec5d2f612438ef53180aeb1853436aecb2",
+      "published_sha256": "cce3c2d5079a632e3832c3539920fe20d81869807ceec6320030aaac4b29a146",
+      "edits": "Machine-specific path literals redacted; non-executable source archive"
+    },
+    {
+      "source_id": "nonlinear_P50000_M50000_20260927/run_nonlinear_expansion.m",
+      "published_path": "source_archive/nonlinear_P50000_M50000_20260927/run_nonlinear_expansion.m.txt",
+      "original_sha256": "7b082a47ac9495105c49df28ea9c70a5f55058a06b9b97284f9d5f695a5b2782",
+      "published_sha256": "98beac89c857e258de77ceec73b114490322599bfd9062d79a5388fc044e7762",
+      "edits": "Machine-specific path literals redacted; non-executable source archive"
+    },
+    {
+      "source_id": "nonlinear_reference_500M_20260927/run_reference_500M.m",
+      "published_path": "source_archive/nonlinear_reference_500M_20260927/run_reference_500M.m.txt",
+      "original_sha256": "39698e0b3530b96afd49cc33d330ef1c70be2594574d2f0b50d4b0edd7447f7f",
+      "published_sha256": "ff3bf007cc96c46fc3c6263add55584bbf420ed8573f4861a8441ce380109eb3",
+      "edits": "Machine-specific path literals redacted; non-executable source archive"
+    },
+    {
+      "source_id": "pool_expansion_30000_20260926/audit_results.py",
+      "published_path": "source_archive/pool_expansion_30000_20260926/audit_results.py.txt",
+      "original_sha256": "060f9ea0cf83abc1178454d99d6477b1b0631eeab24402cc9e55babfe7f311cb",
+      "published_sha256": "8c51c3aac7488a392eea12dcc50b5dca78dcbb7f2c722220db4076664eda00f8",
+      "edits": "Machine-specific path literals redacted; non-executable source archive"
+    },
+    {
+      "source_id": "paper_refresh_30000_20260926/prepare_main_data.py",
+      "published_path": "source_archive/paper_refresh_30000_20260926/prepare_main_data.py.txt",
+      "original_sha256": "3cf985660b9027d81fa5b8085bb8669ec007fbe286106ce43749377ee7cee50a",
+      "published_sha256": "f2657c303504b797522fa88cc81034bf9d1e530e17185fc1a431a1e40b77254e",
+      "edits": "Machine-specific path literals redacted; non-executable source archive"
+    },
+    {
+      "source_id": "paper_refresh_30000_20260926/audit_supplement.py",
+      "published_path": "source_archive/paper_refresh_30000_20260926/audit_supplement.py.txt",
+      "original_sha256": "a391e1b7e44e46f264f25e1c9452e309b3aa5a0a2ec6e35115be7fb1cdf8399b",
+      "published_sha256": "70d3640d49b6cca8002ec100763c07597c694b6432454d3b456a1c70c0db27a4",
+      "edits": "Machine-specific path literals redacted; non-executable source archive"
+    },
+    {
+      "source_id": "coverage_M30000_manuscript_20260927/audit_and_stage.py",
+      "published_path": "source_archive/coverage_M30000_manuscript_20260927/audit_and_stage.py.txt",
+      "original_sha256": "8744363a0988da2cf980534b105abbcee284957a6aaa6d06c8fd09e231d7846f",
+      "published_sha256": "46c4f35d694556f22b34571cd773059c7849f32e795904ef9ab5d4716adb35a3",
+      "edits": "Machine-specific path literals redacted; non-executable source archive"
+    },
+    {
+      "source_id": "nonlinear_P50000_M50000_20260927/audit_results.py",
+      "published_path": "source_archive/nonlinear_P50000_M50000_20260927/audit_results.py.txt",
+      "original_sha256": "56f770e65a5a1c8448db07edc8c7509292f7af58ea3064bac383fa9da5fcfaa3",
+      "published_sha256": "f8d87177ec1c9030901e050c347ebfc367b0bf54dbb784d4fc7579797b49c35f",
+      "edits": "Machine-specific path literals redacted; non-executable source archive"
+    },
+    {
+      "source_id": "nonlinear_reference_500M_20260927/audit_and_recount.py",
+      "published_path": "source_archive/nonlinear_reference_500M_20260927/audit_and_recount.py.txt",
+      "original_sha256": "6c04273c4842656f8e59825d4b363362e49c5426475fd046ee2ea4da39c7f008",
+      "published_sha256": "0cb0b159f8f3e7ba1a8e9483ac3c61dcbe9b228b09a451133378dbba0843e027",
+      "edits": "Machine-specific path literals redacted; non-executable source archive"
+    },
+    {
+      "source_id": "gf_discrepancy_20260927/calculate_gf.m",
+      "published_path": "source_archive/gf_discrepancy_20260927/calculate_gf.m.txt",
+      "original_sha256": "e145356d1e90e1c4e52c916a93ea18aa6346337b7b488561e5696fb3fb2e8654",
+      "published_sha256": "45df3b200ae88770b7780b9e00f86de94a6a8faf21ff3f00f31ead0560c68ea3",
+      "edits": "Machine-specific path literals redacted; non-executable source archive"
+    },
+    {
+      "source_id": "+dpimnumeric/ensureDir.m",
+      "published_path": "source_archive/+dpimnumeric/ensureDir.m.txt",
+      "original_sha256": "1ee11aa3b2c49c10d08697562de2b61f49d7a2bb1c3f0539d7f6f8dda96fc2ff",
+      "published_sha256": "896db6cc0c0de9562d9986828a45aaefb2450177261d8f7656639e819f6510cd",
+      "edits": "Machine-specific path literals redacted; non-executable source archive"
+    },
+    {
+      "source_id": "+dpimnumeric/writeText.m",
+      "published_path": "source_archive/+dpimnumeric/writeText.m.txt",
+      "original_sha256": "8c38c5635c85841c1d63a04c1f9e18756660dfcce688fb708c78078e3f90155d",
+      "published_sha256": "d4fc67e2cbb0542a006311e753d5d78109553ce70f0b77ae0e944173770aa0fa",
+      "edits": "Machine-specific path literals redacted; non-executable source archive"
+    },
+    {
+      "source_id": "+dpimnumeric/writeJson.m",
+      "published_path": "source_archive/+dpimnumeric/writeJson.m.txt",
+      "original_sha256": "e396e580351faab8eec0adf9a326520611a0ba1384c3814052a3761016851d7c",
+      "published_sha256": "3a0988a40b9dc598d3b6e561392639f6b930bed1ee168a308f3acecb4e2a767d",
+      "edits": "Machine-specific path literals redacted; non-executable source archive"
+    },
+    {
+      "source_id": "run_weighted_paper_evidence_suite.m",
+      "line_range": [
+        114,
+        156
+      ],
+      "published_path": "source_archive/finite_B_baseline_local_functions.m.txt",
+      "original_sha256": "1910e087794b576ac8146ee54138041e61817686ee46c0b8a95466f4f24616fc",
+      "published_sha256": "9b596679408158601bd214cb6e1c5fad0a31aadff2e49a5a05c10e7e9968aaff",
+      "edits": "Only the two finite-B baseline functions"
+    }
+  ],
+  "executed_numerical_jobs": 0
+}

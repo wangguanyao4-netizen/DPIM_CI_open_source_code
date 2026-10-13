@@ -1,0 +1,111 @@
+"""Compare nested references using exactly the same P50000 M50000 intervals."""
+from pathlib import Path
+from datetime import datetime,timezone
+import argparse
+import hashlib
+import json
+import numpy as np
+import pandas as pd
+from scipy.io import loadmat
+from scipy.stats import beta
+
+ROOT=Path(__file__).resolve().parent
+REPO=ROOT.parent
+OLD=REPO/'nonlinear_P50000_M50000_20260927'
+
+
+def sha(p):
+    h=hashlib.sha256()
+    with p.open('rb') as f:
+        for a in iter(lambda:f.read(8388608),b''):h.update(a)
+    return h.hexdigest()
+
+
+def dump(p,v):
+    tmp=p.with_suffix(p.suffix+'.writing');tmp.write_text(json.dumps(v,indent=2),encoding='utf-8');tmp.replace(p)
+
+
+def protect():
+    p=ROOT/'protected_inputs.json'
+    if p.exists():
+        records=json.loads(p.read_text())
+        for name,digest in records.items():assert sha(Path(name))==digest,name
+    else:
+        files=[OLD/'reference_N100000000.mat',OLD/'pool_complete.mat',OLD/'configuration.mat',
+            OLD/'publication_data/nested_M_pointwise_coverage.csv',OLD/'publication_data/recommended_R.csv']
+        files+=sorted(OLD.glob('R*/batch_*.mat'))
+        assert len(files)==1005
+        dump(p,{str(f):sha(f) for f in files})
+    print('Original reference, pool and 1000 interval batches protected',flush=True)
+
+
+def main():
+    protect();original=loadmat(OLD/'reference_N100000000.mat',simplify_cells=True)
+    refs={100000000:original}
+    total=original['total'].copy();square=original['square'].copy();records=[]
+    files=sorted((ROOT/'reference_chunks').glob('reference_*.mat'));assert len(files)==400
+    for i,p in enumerate(files):
+        a=loadmat(p,simplify_cells=True)
+        assert a['first']==100000001+i*1000000 and a['last']==101000000+i*1000000
+        total+=a['total'];square+=a['square'];records.append(dict(path=str(p),sha256=sha(p)))
+        if a['last'] in [200000000,500000000]:
+            N=a['last'];r=loadmat(ROOT/f'reference_N{N}.mat',simplify_cells=True)
+            assert r['N']==N and r['h']==.08 and np.array_equal(r['grid'],original['grid'])
+            assert np.array_equal(r['total'],total) and np.array_equal(r['square'],square)
+            assert np.allclose(r['density'],total/N,atol=1e-15,rtol=1e-13)
+            assert np.allclose(r['se'],np.sqrt(np.maximum(square-total**2/N,0)/(N*(N-1))),atol=1e-15,rtol=1e-12)
+            refs[N]=r
+    base=pd.read_csv(OLD/'publication_data/nested_M_pointwise_coverage.csv')
+    assert len(base)==150 and (base.P==50000).all() and (base.M==50000).all()
+    out=ROOT/'publication_data';out.mkdir(exist_ok=True);allrows=[]
+    for R in [16,128]:
+        counts={N:np.zeros((3,25),dtype=np.int64) for N in refs}
+        for first in range(1,50001,100):
+            p=OLD/f'R{R}/batch_{first:05d}_{first+99:05d}.mat';a=loadmat(p,simplify_cells=True)
+            assert a['first']==first and a['last']==first+99 and a['P']==50000 and a['R']==R
+            for N,ref in refs.items():
+                target=ref['density'][201:226]
+                counts[N]+=((a['lower']<=target)&(target<=a['upper'])).sum(axis=0)
+        for m,method in enumerate(['Student t','percentile bootstrap','bootstrap-t']):
+            b=base[(base.R==R)&(base.method==method)].sort_values('y')
+            assert np.array_equal(b.hit_count.to_numpy(),counts[100000000][m])
+            for N,ref in refs.items():
+                d=b.copy();k=counts[N][m];M=50000
+                d['hit_count']=k;d['coverage']=k/M;d['reference_N']=N
+                d['truth']=ref['density'][201:226];d['reference_se']=ref['se'][201:226]
+                lower=np.zeros(25);upper=np.ones(25)
+                ix=k>0;lower[ix]=beta.ppf(.025,k[ix],M-k[ix]+1)
+                ix=k<M;upper[ix]=beta.ppf(.975,k[ix]+1,M-k[ix])
+                d['cp95_lower']=lower;d['cp95_upper']=upper
+                assert np.array_equal(d.formula_prediction,b.formula_prediction)
+                allrows.append(d)
+    rows=pd.concat(allrows,ignore_index=True)
+    rows.to_csv(out/'reference_size_comparison.csv',index=False)
+    rows[rows.reference_N==500000000].to_csv(out/'nested_M_pointwise_coverage.csv',index=False)
+    summaries=[]
+    for (N,R,method),d in rows.groupby(['reference_N','R','method'],sort=False):
+        summaries.append(dict(reference_N=N,R=R,method=method,mean_coverage=d.coverage.mean(),
+            mean_formula=d.formula_prediction.mean(),rmse=np.sqrt(np.mean((d.coverage-d.formula_prediction)**2)),
+            mean_abs_nominal_error=np.mean(abs(d.coverage-.95))))
+    summary=pd.DataFrame(summaries);summary.to_csv(out/'coverage_summary.csv',index=False)
+    final=refs[500000000]
+    for name,sl in [('density',slice(0,201)),('coverage',slice(201,226)),('n_density',slice(226,307))]:
+        pd.DataFrame(dict(y=final['grid'][sl],reference_density=final['density'][sl],reference_se=final['se'][sl],N=500000000)).to_csv(out/f'reference_{name}.csv',index=False)
+    pool=loadmat(OLD/'pool_complete.mat',simplify_cells=True)['pool'][:,201:226]
+    diagnostics=[]
+    for N,r in refs.items():
+        diagnostics.append(pd.DataFrame(dict(reference_N=N,y=r['grid'][201:226],reference_density=r['density'][201:226],
+            reference_se=r['se'][201:226],pool_mean=pool.mean(0),pool_mean_se=pool.std(0,ddof=1)/np.sqrt(50000),
+            R128_mean_se=pool.std(0,ddof=1)/np.sqrt(128))))
+    pd.concat(diagnostics,ignore_index=True).to_csv(out/'reference_pool_diagnostic.csv',index=False)
+    dump(ROOT/'audit_manifest.json',dict(status='passed',utc=datetime.now(timezone.utc).isoformat(),P=50000,M=50000,
+        reference_N=500000000,nested_reference_sizes=list(refs),centering=False,
+        original_intervals_and_pool_unchanged=True,original_N100M_counts_reproduced=True,formula_predictions_unchanged=True,
+        new_reference_chunks=records,source_protection_sha256=sha(ROOT/'protected_inputs.json'),
+        output_hashes={str(p):sha(p) for p in out.glob('*.csv')}))
+    print(summary.to_string(index=False),flush=True);print('AUDIT PASSED',flush=True)
+
+
+if __name__=='__main__':
+    p=argparse.ArgumentParser();p.add_argument('--prepare',action='store_true');a=p.parse_args()
+    protect() if a.prepare else main()

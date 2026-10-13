@@ -1,0 +1,193 @@
+"""Verify append-only numerics and recount all saved interval endpoints."""
+from pathlib import Path
+from datetime import datetime, timezone
+import argparse
+import hashlib
+import json
+import numpy as np
+import pandas as pd
+from scipy.io import loadmat
+from scipy.stats import beta
+
+ROOT = Path(__file__).resolve().parent
+REPO = ROOT.parent
+CODE = REPO / 'tc_recalculation_20260922'
+METHODS = ['Student t', 'percentile bootstrap', 'bootstrap-t']
+
+
+def sha(path):
+    h = hashlib.sha256()
+    with path.open('rb') as f:
+        for block in iter(lambda: f.read(8 * 1024 * 1024), b''):
+            h.update(block)
+    return h.hexdigest()
+
+
+def dump(path, value):
+    tmp = path.with_suffix(path.suffix + '.writing')
+    tmp.write_text(json.dumps(value, indent=2), encoding='utf-8')
+    json.loads(tmp.read_text(encoding='utf-8'))
+    tmp.replace(path)
+
+
+def protect():
+    files = [
+        REPO/'pool_expansion_30000_20260926/nonlinear/results/pool_complete.mat',
+        CODE/'tc_intervals_from_original.m',
+        CODE/'raw_percentile_finiteB_coefficients.csv',
+        CODE/'results/paper_scale_original_grid_20260922/nonlinear_rqmc_n768/design.mat',
+        CODE/'results/manuscript_selected_20260923/reference_nonlinear/reference_grids.mat',
+        CODE/'results/reference_expansion_10x_20260923/nonlinear/reference_N20000000.mat',
+        REPO/'coverage_M30000_manuscript_20260927/publication_data/plot_nonlinear/nested_M_pointwise_coverage.csv',
+    ]
+    dest = ROOT/'protected_inputs.json'
+    if dest.exists():
+        for path, digest in json.loads(dest.read_text()).items():
+            assert sha(Path(path)) == digest, path
+    else:
+        dump(dest, {str(p): sha(p) for p in files})
+    print('Protected input hashes verified', flush=True)
+
+
+def moments(q):
+    n = len(q)
+    dx = q - q.mean(axis=0)
+    m2 = np.mean(dx**2, axis=0)
+    m3 = np.mean(dx**3, axis=0)
+    m4 = np.mean(dx**4, axis=0)
+    v = n/(n-1)*m2
+    k3 = n*n/((n-1)*(n-2))*m3
+    k4 = n*n*((n+1)*m4-3*(n-1)*m2*m2)/((n-1)*(n-2)*(n-3))
+    return k3/v**1.5, k4/v**2, v
+
+
+def main():
+    protect()
+    old = loadmat(REPO/'pool_expansion_30000_20260926/nonlinear/results/pool_complete.mat', simplify_cells=True)
+    new = loadmat(ROOT/'pool_complete.mat', simplify_cells=True)
+    pool = new['pool']; cfg = new['cfg']
+    assert pool.shape == (50000, 226) and np.array_equal(pool[:30000], old['pool'])
+    assert cfg['P'] == cfg['M'] == 50000 and cfg['reference_N'] == 100000000 and not cfg['centering']
+    ref = loadmat(ROOT/'reference_N100000000.mat', simplify_cells=True)
+    assert ref['N'] == 100000000 and ref['h'] == .08
+    total = ref['old_truth']*20000000
+    square = ref['old_se']**2*(20000000*19999999) + ref['old_truth']**2*20000000
+    records = []
+    chunks = sorted((ROOT/'reference_chunks').glob('reference_*.mat'))
+    assert len(chunks) == 800
+    for i, path in enumerate(chunks):
+        a = loadmat(path, simplify_cells=True)
+        assert a['first'] == 20000001+i*100000 and a['last'] == 20100000+i*100000
+        total += a['total']; square += a['square']
+        records.append(dict(path=str(path), sha256=sha(path)))
+    assert np.array_equal(total, ref['total']) and np.array_equal(square, ref['square'])
+    assert np.allclose(total/100000000, ref['density'], atol=1e-15, rtol=1e-13)
+    se = np.sqrt(np.maximum(square-total**2/100000000, 0)/(100000000*99999999))
+    assert np.allclose(se, ref['se'], atol=1e-15, rtol=1e-12)
+    cursor = 30001
+    for path in sorted((ROOT/'pool_chunks').glob('curves_*.mat')):
+        a = loadmat(path, simplify_cells=True)
+        assert a['first'] == cursor
+        assert np.array_equal(pool[a['first']-1:a['last']], a['q'])
+        cursor = a['last']+1
+        records.append(dict(path=str(path), sha256=sha(path)))
+    assert cursor == 50001
+    out = ROOT/'publication_data'; out.mkdir(exist_ok=True)
+    for name, sl in [('density', slice(0, 201)), ('coverage', slice(201, 226)), ('n_density', slice(226, 307))]:
+        pd.DataFrame(dict(y=ref['grid'][sl], reference_density=ref['density'][sl], reference_se=ref['se'][sl], N=100000000)).to_csv(out/f'reference_{name}.csv', index=False)
+    q = pool[:, 201:226]; y = cfg['coverage_grid']
+    g, k, v = moments(q)
+    coef = pd.read_csv(CODE/'raw_percentile_finiteB_coefficients.csv')
+    rows = []; sensitivity = []; blocks = []
+    for R in [16, 128]:
+        lo = np.empty((50000, 3, 25)); hi = np.empty_like(lo)
+        files = sorted((ROOT/f'R{R}').glob('batch_*.mat'))
+        assert len(files) == 500
+        for i, path in enumerate(files):
+            a = loadmat(path, simplify_cells=True)
+            assert a['first'] == i*100+1 and a['last'] == i*100+100 and a['P'] == 50000 and a['R'] == R
+            assert np.all(a['lower'] <= a['upper']) and not np.isnan(a['lower']).any() and not np.isnan(a['upper']).any()
+            lo[i*100:(i+1)*100] = a['lower']; hi[i*100:(i+1)*100] = a['upper']
+            records.append(dict(path=str(path), sha256=sha(path)))
+        for m, method in enumerate(METHODS):
+            key = 't distribution' if m == 0 else method
+            c = coef[(coef.B == 399) & (coef.method == key)].set_index('coefficient').value
+            formula = .95+(c.A0+c.A4*k+c.A33*g*g)/R
+            for N, truth in [(20000000, ref['old_truth'][201:226]), (100000000, ref['density'][201:226])]:
+                hit = (lo[:, m] <= truth) & (truth <= hi[:, m])
+                for M in [30000, 50000]:
+                    hits = hit[:M].sum(axis=0)
+                    lower = np.zeros(25); upper = np.ones(25)
+                    mask = hits > 0; lower[mask] = beta.ppf(.025, hits[mask], M-hits[mask]+1)
+                    mask = hits < M; upper[mask] = beta.ppf(.975, hits[mask]+1, M-hits[mask])
+                    frame = pd.DataFrame(dict(model='nonlinear', scheme='rqmc', method=method, n=768, R=R, B=399,
+                        M=M, P=50000, y=y, hit_count=hits, coverage=hits/M, cp95_lower=lower, cp95_upper=upper,
+                        formula_prediction=formula, truth=truth, reference_N=N,
+                        reference_se=ref['se'][201:226] if N == 100000000 else ref['old_se'][201:226],
+                        outer_mean_se=np.sqrt(v/R), experiment_type='finite_pool_conditional'))
+                    sensitivity.append(frame)
+                    if N == 100000000 and M == 50000:
+                        rows.append(frame)
+                if N == 100000000:
+                    for first in range(0, 50000, 5000):
+                        blocks.append(pd.DataFrame(dict(method=method, R=R, first=first+1, last=first+5000, y=y, coverage=hit[first:first+5000].mean(axis=0))))
+    data = pd.concat(rows, ignore_index=True)
+    data.to_csv(out/'nested_M_pointwise_coverage.csv', index=False)
+    pd.concat(sensitivity, ignore_index=True).to_csv(out/'reference_M_sensitivity.csv', index=False)
+    pd.concat(blocks, ignore_index=True).to_csv(out/'disjoint_5000_blocks.csv', index=False)
+    # Reuse archived P30000 intervals to isolate reference changes at fixed M.
+    baseline=pd.read_csv(REPO/'coverage_M30000_manuscript_20260927/publication_data/plot_nonlinear/nested_M_pointwise_coverage.csv')
+    controls=[]
+    for R in [16,128]:
+        hits_old=np.zeros((3,25),dtype=np.int64);hits_new=np.zeros_like(hits_old)
+        for first in range(1,30001,100):
+            last=first+99
+            folder=(REPO/f'pool_expansion_30000_20260926/nonlinear/results/P30000/R{R}' if last<=5000 else
+                    REPO/f'nonlinear_M_sensitivity_20260927/R{R}' if last<=20000 else
+                    REPO/f'coverage_M30000_manuscript_20260927/nonlinear_pool/R{R}')
+            path=folder/f'batch_{first:05d}_{last:05d}.mat'
+            a=loadmat(path,simplify_cells=True)
+            assert a['first']==first and a['last']==last and a['P']==30000 and a['R']==R
+            hits_old+=((a['lower']<=ref['old_truth'][201:226])&(ref['old_truth'][201:226]<=a['upper'])).sum(axis=0)
+            hits_new+=((a['lower']<=ref['density'][201:226])&(ref['density'][201:226]<=a['upper'])).sum(axis=0)
+            records.append(dict(path=str(path),sha256=sha(path)))
+        for m,method in enumerate(METHODS):
+            b=baseline[(baseline.R==R)&(baseline.method==method)].sort_values('y')
+            assert np.array_equal(hits_old[m],b.hit_count.to_numpy())
+            for N,hits in [(20000000,hits_old[m]),(100000000,hits_new[m])]:
+                controls.append(pd.DataFrame(dict(P=30000,M=30000,R=R,method=method,y=y,reference_N=N,
+                    hit_count=hits,coverage=hits/30000,formula_prediction=b.formula_prediction.to_numpy())))
+    keep=['P','M','R','method','y','reference_N','hit_count','coverage','formula_prediction']
+    controls.append(pd.concat(sensitivity,ignore_index=True)[keep])
+    pd.concat(controls,ignore_index=True).to_csv(out/'pool_reference_factorial_comparison.csv',index=False)
+    means = []
+    for (method, R), d in data.groupby(['method', 'R'], sort=False):
+        means.append(dict(method=method, R=int(R), mean_coverage=d.coverage.mean(), mean_formula=d.formula_prediction.mean(),
+            rmse=float(np.sqrt(np.mean((d.coverage-d.formula_prediction)**2))),
+            mean_abs_nominal_error=float(np.mean(abs(d.coverage-.95)))))
+    pd.DataFrame(means).to_csv(out/'coverage_summary.csv', index=False)
+    diagnostic = pd.DataFrame(dict(y=y, reference_20m=ref['old_truth'][201:226], reference_100m=ref['density'][201:226],
+        reference_se_100m=ref['se'][201:226], pool_mean_30k=old['pool'][:,201:226].mean(axis=0),
+        pool_mean_50k=q.mean(axis=0), pool_mean_se_50k=np.sqrt(v/50000),
+        R128_mean_se=np.sqrt(v/128), gamma=g, excess_kurtosis=k))
+    diagnostic.to_csv(out/'reference_pool_diagnostic.csv', index=False)
+    gd, kd, _ = moments(pool[:,:201]); core=pool[:,:201].mean(axis=0); core=core>=.05*core.max()
+    rec=[]
+    for method in ['t distribution', 'percentile bootstrap', 'bootstrap-t']:
+        c=coef[(coef.B==399)&(coef.method==method)].set_index('coefficient').value
+        bound=abs(c.A0)+abs(c.A4)*max(abs(kd[core]))+abs(c.A33)*max(abs(gd[core]))**2
+        rec.append(dict(P=50000,method=method,Lambda=bound,recommended_R=max(16,int(np.ceil(bound/.01)))))
+    pd.DataFrame(rec).to_csv(out/'recommended_R.csv',index=False)
+    records += [dict(path=str(ROOT/name),sha256=sha(ROOT/name)) for name in ['pool_complete.mat','reference_N100000000.mat','configuration.mat']]
+    dump(ROOT/'audit_manifest.json',dict(status='passed',utc=datetime.now(timezone.utc).isoformat(),P=50000,M=50000,
+        reference_N=100000000,old_pool_prefix_identical=True,centering=False,reference_stream_boundary_verified=True,
+        original_interval_routine=str(CODE/'tc_intervals_from_original.m'),interval_batches=1000,
+        reference_chunks=800,outputs={str(p):sha(p) for p in out.glob('*.csv')},raw_files=records,
+        scope='Nonlinear n768 main coverage; internal-n studies and MC comparison pools are unchanged; manuscript pending review'))
+    print(pd.DataFrame(means).to_string(index=False),flush=True)
+    print('AUDIT PASSED',flush=True)
+
+
+if __name__ == '__main__':
+    parser=argparse.ArgumentParser();parser.add_argument('--prepare',action='store_true');args=parser.parse_args()
+    protect() if args.prepare else main()

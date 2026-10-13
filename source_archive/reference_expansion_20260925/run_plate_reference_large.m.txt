@@ -1,0 +1,88 @@
+function run_plate_reference_large(mode)
+% Extend the current paper reference, retaining independent scrambled groups.
+if nargin<1,mode="full";end
+root=fileparts(mfilename('fullpath'));repo=fileparts(root);
+code=fullfile(repo,'tc_recalculation_20260922');addpath(code);
+old=fullfile(code,'results','plate_rqmc_reference_20260923');
+archiveRoot=fullfile(code,'results','paper_scale_original_grid_20260922');
+out=fullfile(root,'results');if ~isfolder(out),mkdir(out);end
+maxNumCompThreads(2);setenv('OPENBLAS_NUM_THREADS','2');setenv('OMP_NUM_THREADS','2');
+if pyenv().Status=="NotLoaded"
+    pyenv('Version','<configure-local-path>','ExecutionMode','InProcess');
+end
+insert(py.sys.path,int32(0),code);bridge=py.importlib.import_module('tc_bridge');
+bridge.initialize_plate();archive=py.numpy.load(fullfile(archiveRoot,'fixed_plate_KL.npz'));
+assert(logical(py.numpy.array_equal(bridge.MODES,archive.get('nodal_modes'))));
+assert(logical(py.numpy.array_equal(bridge.MODEL.nodes,archive.get('nodes'))));
+assert(logical(py.numpy.array_equal(bridge.MODEL.quads,archive.get('quads'))));archive.close();
+s=load(fullfile(old,'reference.mat'));grid=s.grid;h=s.h;
+config=struct('groups',16,'points_per_group',65536,'seed',s.config.seed, ...
+    'dimension',10,'h',h,'grid',grid,'centering',false, ...
+    'replicate_type','MatousekAffineOwen scrambled Sobol', ...
+    'KL_exact_archive_match',true,'old_results_read_only',true,'threads',2);
+lock=fullfile(out,'config.mat');
+if isfile(lock),a=load(lock);assert(isequaln(config,a.config));else,save(lock,'config','-v7');end
+% Test the nested input sequences and the unchanged FE response before reuse.
+prefixMatch=false(8,1);responseErrors=zeros(8,1);
+for group=1:8
+    rng(config.seed+group,'twister');U=net(scramble(sobolset(10),'MatousekAffineOwen'),65536);
+    rng(config.seed+group,'twister');V=net(scramble(sobolset(10),'MatousekAffineOwen'),16384);
+    prefixMatch(group)=isequal(U(1:16384,:),V);assert(prefixMatch(group));
+    b=load(fullfile(old,sprintf('group_%02d',group),'responses_000001_000512.mat'));
+    response=reshape(double(bridge.solve_plate(py.numpy.array(norminv(U(1:3,:))),true)),[],1);
+    responseErrors(group)=max(abs(response-b.response(1:3))./abs(b.response(1:3)));
+    assert(responseErrors(group)<1e-9);
+end
+save(fullfile(out,'preflight.mat'),'prefixMatch','responseErrors','-v7');
+fprintf('PREFLIGHT PASSED: all 8 nested input prefixes and 24 FE responses verified.\n');
+if mode=="smoke",return;end
+assert(mode=="full");
+groupMeans=zeros(config.groups,numel(grid));N=config.points_per_group;
+wall=tic;completed=0;reused=0;computed=0;
+for group=1:config.groups
+    folder=fullfile(out,sprintf('group_%02d',group));if ~isfolder(folder),mkdir(folder);end
+    rng(config.seed+group,'twister');U=net(scramble(sobolset(10),'MatousekAffineOwen'),N);
+    U(U==0)=realmin;U(U==1)=1-eps/2;
+    total=zeros(size(grid));count=0;
+    for first=1:512:N
+        last=min(first+511,N);file=fullfile(folder,sprintf('responses_%06d_%06d.mat',first,last));
+        Ublock=U(first:last,:);
+        if isfile(file)
+            a=load(file);assert(a.first==first&&a.last==last&&a.group==group&&isequal(a.Ublock,Ublock));
+            response=a.response;seconds=a.seconds;origin=a.origin;
+        else
+            previous=fullfile(old,sprintf('group_%02d',group),sprintf('responses_%06d_%06d.mat',first,last));
+            if group<=8&&last<=16384
+                a=load(previous);assert(a.first==first&&a.last==last&&a.group==group);
+                response=a.response;seconds=0;origin='reused_original';
+            else
+                timer=tic;
+                response=reshape(double(bridge.solve_plate(py.numpy.array(norminv(Ublock)),first==1)),[],1);
+                seconds=toc(timer);origin='new_FE';
+            end
+            tmp=[file,'.writing.mat'];
+            save(tmp,'response','Ublock','first','last','group','seconds','origin','-v7');
+            check=load(tmp);assert(isequaln(check.response,response)&&isequal(check.Ublock,Ublock));
+            movefile(tmp,file);
+        end
+        assert(numel(response)==last-first+1&&all(isfinite(response)));
+        total=total+sum(exp(-.5*((grid-response)/h).^2)/(sqrt(2*pi)*h),1);
+        count=count+numel(response);completed=completed+numel(response);
+        if strcmp(origin,'reused_original'),reused=reused+numel(response);else,computed=computed+numel(response);end
+        if mod(last,8192)==0
+            elapsed=toc(wall);progress=struct('completed',completed,'total',config.groups*N, ...
+                'group',group,'within_group',last,'reused',reused,'new_responses',computed, ...
+                'elapsed_seconds',elapsed,'updated_at',char(datetime('now','Format','yyyy-MM-dd HH:mm:ss')));
+            tmp=fullfile(out,'progress.writing.mat');save(tmp,'progress','-v7');movefile(tmp,fullfile(out,'progress.mat'),'f');
+            fprintf('%s completed=%d/%d group=%d/16 within=%d/65536 reused=%d new=%d elapsed=%.1fs\n', ...
+                progress.updated_at,completed,config.groups*N,group,last,reused,computed,elapsed);
+        end
+    end
+    assert(count==N);groupMeans(group,:)=total/N;
+end
+density=mean(groupMeans,1);se=std(groupMeans,0,1)/sqrt(config.groups);
+tmp=fullfile(out,'reference.writing.mat');save(tmp,'config','grid','h','groupMeans','density','se','-v7');
+check=load(tmp);assert(isequal(check.density,density)&&all(isfinite(density)));movefile(tmp,fullfile(out,'reference.mat'));
+writetable(table(grid.',density.',se.','VariableNames',{'y','reference_density','reference_se'}),fullfile(out,'reference_density.csv'));
+fprintf('COMPLETE: total=%d reused=%d new=%d elapsed=%.1fs\n',completed,reused,computed,toc(wall));
+end

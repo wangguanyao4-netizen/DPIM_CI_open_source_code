@@ -1,0 +1,60 @@
+function out = tc_intervals_from_original(x, B, alpha, seed, streamSeed)
+% Adapted from localConcreteIntervals in run_mc_rqmc_recommended_R_intervals.
+% The caller records whether complete curves are fresh or sampled from a pool.
+R = size(x,1); G = size(x,2);
+assert(R >= 2 && all(isfinite(x),'all'));
+if nargin<5,streamSeed=20260922;end
+stream = RandStream('Threefry',Seed=streamSeed); stream.Substream=seed;
+mu = mean(x,1); s = std(x,0,1); se = s/sqrt(R);
+kMinus = max(1,floor((B+1)*alpha/2));
+kPlus = min(B,ceil((B+1)*(1-alpha/2)));
+lower = zeros(3,G); upper = lower;
+lower(1,:) = mu-tinv(1-alpha/2,R-1)*se;
+upper(1,:) = mu+tinv(1-alpha/2,R-1)*se;
+bootIndex = randi(stream,R,B,R);
+rowIndex = repmat((1:B).',R,1);
+counts = accumarray([rowIndex,bootIndex(:)],1,[B,R]);
+% Center only for numerically stable variance arithmetic, not target matching.
+dx = x-mu;
+bootDelta = counts*dx/R;
+bootMean = counts*x/R;
+secondMoment = counts*(dx.^2)/R;
+varianceDifference = secondMoment-bootDelta.^2;
+bootVariance = R/(R-1)*max(varianceDifference,0);
+% Rare-response resamples can exclude the large ordinate. Their true variance
+% may then be far below both terms of the moment subtraction above.
+suspect = varianceDifference <= 64*eps(max(secondMoment,bootDelta.^2));
+columns = find(any(suspect,1));
+if ~isempty(columns)
+    stable=zeros(B,numel(columns));
+    for i=1:R
+        deviation=x(i,columns)-bootMean(:,columns);
+        stable=stable+counts(:,i).*(deviation.^2);
+    end
+    stable=stable/(R-1);
+    for j=1:numel(columns)
+        k=columns(j);mask=suspect(:,k);
+        bootVariance(mask,k)=stable(mask,j);
+    end
+end
+bootSd = sqrt(bootVariance);
+sortedMean = sort(bootMean,1);
+lower(2,:) = sortedMean(kMinus,:); upper(2,:) = sortedMean(kPlus,:);
+pivot = sqrt(R)*bootDelta./bootSd;
+pivot(bootSd==0 & bootDelta==0) = 0;
+pivot(bootSd==0 & bootDelta>0) = Inf;
+pivot(bootSd==0 & bootDelta<0) = -Inf;
+sortedPivot = sort(pivot,1);
+lower(3,:) = mu-sortedPivot(kPlus,:).*se;
+upper(3,:) = mu-sortedPivot(kMinus,:).*se;
+constant = s==0;
+lower(:,constant) = repmat(mu(constant),3,1);
+upper(:,constant) = repmat(mu(constant),3,1);
+assert(~any(isnan(lower),'all') && ~any(isnan(upper),'all'));
+out = struct('mean',mu,'sd',s,'lower',lower,'upper',upper, ...
+    'variance_algorithm','centered moments with direct residual fallback v2', ...
+    'variance_fallback_count',sum(suspect,1), ...
+    'zero_bootstrap_variance',sum(bootSd==0,1), ...
+    'bootstrap_mean_ties',sum(diff(sortedMean,1,1)==0,1), ...
+    'k_minus',kMinus,'k_plus',kPlus);
+end

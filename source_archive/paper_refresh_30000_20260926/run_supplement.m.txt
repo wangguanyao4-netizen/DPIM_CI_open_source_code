@@ -1,0 +1,190 @@
+function run_supplement(mode)
+% Complete the manuscript's preliminary and internal-n pools without centering.
+if nargin<1,mode="preflight";end
+root=fileparts(mfilename('fullpath'));repo=fileparts(root);code=fullfile(repo,'tc_recalculation_20260922');addpath(code);
+base=fullfile(code,'results','paper_scale_original_grid_20260922');
+maxNumCompThreads(2);setenv('OPENBLAS_NUM_THREADS','2');setenv('OMP_NUM_THREADS','2');
+specs={"linear",192,"n_study";"linear",384,"n_study";"linear",768,"n_study"; ...
+    "nonlinear",192,"n_study";"nonlinear",384,"n_study";"nonlinear",768,"n_study"; ...
+    "linear",20000,"mc";"nonlinear",20000,"mc";"plate",1000,"mc"};
+internal=table();recAll=table();intervalAll=table();bench=table();bridge=[];
+for job=1:size(specs,1)
+    model=specs{job,1};n=specs{job,2};kind=specs{job,3};scheme="rqmc";if kind=="mc",scheme="mc";end
+    name=model+"_"+scheme+"_n"+n;src=fullfile(base,name);if kind=="n_study",src=fullfile(base,'n_study',name);end
+    out=fullfile(root,'results',kind,name);if ~isfolder(out),mkdir(out);end
+    a=load(fullfile(src,'design.mat'));d=a.design;a=load(fullfile(src,'pilot_complete.mat'));old=a.pilot;
+    [grid,truth,h,B,refN]=reference(model,kind,base,repo);
+    assert(d.n==n&&size(old,1)==4096&&size(old,2)==numel(grid));
+    seed=2026092600+job;
+    if kind=="n_study"&&n==768
+        a=load(fullfile(base,name,'design.mat'));assert(isequal(d.base,a.design.base)&&isequal(d.P,a.design.P));
+        seed=2026092511+(model=="nonlinear");
+    end
+    if model=="plate"
+        if pyenv().Status=="NotLoaded",pyenv('Version','<configure-local-path>','ExecutionMode','InProcess');end
+        insert(py.sys.path,int32(0),code);bridge=py.importlib.import_module('tc_bridge');bridge.initialize_plate();
+        archive=py.numpy.load(fullfile(base,'fixed_plate_KL.npz'));
+        assert(logical(py.numpy.array_equal(bridge.MODES,archive.get('nodal_modes'))));
+        assert(logical(py.numpy.array_equal(bridge.MODEL.nodes,archive.get('nodes'))));
+        assert(logical(py.numpy.array_equal(bridge.MODEL.quads,archive.get('quads'))));archive.close();
+    end
+    cfg=struct('model',model,'scheme',scheme,'n',n,'kind',kind,'P',30000,'P_old',4096, ...
+        'grid',grid,'truth',truth,'h',h,'B',B,'reference_N',refN,'shift_seed',seed,'centering',false,'threads',2);
+    atomic(fullfile(out,'config.mat'),struct('cfg',cfg));
+    t=tic;[q,~]=curves(model,d,2,grid,h,20260922,key(d,3,0,1),bridge);seconds=toc(t);
+    err=max(abs(q-old(1:2,:)),[],'all')/max(abs(old(1:2,:)),[],'all');assert(err<1e-11);
+    pre=fullfile(out,'preflight.mat');if ~isfile(pre),atomic(pre,struct('relative_error',err,'seconds_per_curve',seconds/2));end
+    bench=[bench;table(model,scheme,n,kind,err,seconds/2,'VariableNames', ...
+        {'model','scheme','n','kind','relative_error','seconds_per_curve'})]; %#ok<AGROW>
+    fprintf('PREFLIGHT %s %s relative_error=%.3g seconds_per_curve=%.4f\n',kind,name,err,seconds/2);
+    if mode=="preflight",continue;end
+    assert(mode=="run");pool=zeros(30000,numel(grid));pool(1:4096,:)=old;
+    chunks=fullfile(out,'chunks');if ~isfolder(chunks),mkdir(chunks);end;wall=tic;poolSeconds=0;
+    for first=4097:32:30000
+        last=min(first+31,30000);sub=(first-4097)/32+1;file=fullfile(chunks,sprintf('curves_%05d_%05d.mat',first,last));
+        if isfile(file)
+            a=load(file);assert(a.first==first&&a.last==last&&a.seed==seed&&a.substream==sub);
+        else
+            t=tic;[q,shifts]=curves(model,d,last-first+1,grid,h,seed,sub,bridge);
+            a=struct('first',first,'last',last,'seed',seed,'substream',sub,'q',q,'shifts',shifts,'seconds',toc(t));atomic(file,a);
+        end
+        assert(isequal(size(a.q),[last-first+1,numel(grid)])&&all(isfinite(a.q),'all')&&all(a.q>=0,'all'));
+        poolSeconds=poolSeconds+a.seconds;
+        pool(first:last,:)=a.q;progress(repo,out,kind+" "+name,"supplement_pool",last,30000,poolSeconds);
+        if mod(last-4096,320)==0||last==30000,fprintf('%s %s pool=%d/30000 elapsed=%.1f\n',kind,name,last,toc(wall));end
+    end
+    assert(isequal(pool(1:4096,:),old));atomic(fullfile(out,'pool_complete.mat'),struct('pool',pool,'cfg',cfg));
+    if kind=="n_study"
+        T=coverage(model,d,pool,grid,truth,B,out,repo);internal=[internal;T]; %#ok<AGROW>
+        writetable(internal,fullfile(root,'results','n_uncentered_coverage_results.csv'));
+    else
+        rec=recommend(model,d,pool,B,code);writetable(rec,fullfile(out,'recommended_R.csv'));
+        T=concrete(model,d,rec,grid,truth,h,B,out,bridge);intervalAll=[intervalAll;T];recAll=[recAll;rec]; %#ok<AGROW>
+    end
+    progress(repo,out,kind+" "+name,"supplement_job_complete",30000,30000,toc(wall));
+end
+writetable(bench,fullfile(root,'preflight.csv'));
+if mode=="preflight",return;end
+for model=["linear","nonlinear","plate"]
+    n=768;if model=="plate",n=200;end
+    a=load(fullfile(base,model+"_rqmc_n"+n,'design.mat'));d=a.design;
+    a=load(fullfile(repo,'pool_expansion_30000_20260926',model,'results','pool_complete.mat'));pool=a.pool(:,1:201);
+    [grid,truth,h,B,~]=reference(model,"mc",base,repo);
+    out=fullfile(root,'results','recommended',model+"_rqmc_n"+n);if ~isfolder(out),mkdir(out);end
+    rec=recommend(model,d,pool,B,code);writetable(rec,fullfile(out,'recommended_R.csv'));
+    T=concrete(model,d,rec,grid,truth,h,B,out,bridge);intervalAll=[intervalAll;T];recAll=[recAll;rec]; %#ok<AGROW>
+end
+writetable(recAll,fullfile(root,'results','recommended_R_before_intervals.csv'));
+writetable(intervalAll,fullfile(root,'results','all_recommended_R_intervals.csv'));
+writetable(intervalAll(intervalAll.model~="plate",:),fullfile(root,'results','mc_rqmc_recommended_R_intervals.csv'));
+writetable(intervalAll(intervalAll.model=="plate",:),fullfile(root,'results','plate_mc_rqmc_recommended_R_intervals.csv'));
+progress(repo,fullfile(root,'results'),"All supplementary numerical jobs","supplement_numerics_complete",30000,30000,0);
+fprintf('SUPPLEMENT NUMERICS COMPLETE\n');
+end
+
+function [grid,truth,h,B,N]=reference(model,kind,base,repo)
+if model=="plate"
+    a=load(fullfile(repo,'reference_expansion_2m_20260925','results','reference.mat'));
+    grid=a.grid;truth=a.density;h=a.h;B=999;N=2097152;return;
+end
+a=load(fullfile(base,"reference_"+model,'reference.mat'));grid=a.ref.y;h=a.ref.h;B=399;
+if kind=="n_study",a=load(fullfile(base,"reference_"+model,'reference_n_grid.mat'));grid=a.ref.y;end
+if model=="linear",truth=normpdf(grid,0,sqrt(1+h^2));N=Inf;return;end
+a=load(fullfile(repo,'tc_recalculation_20260922','results','manuscript_selected_20260923','reference_nonlinear','reference_grids.mat'));
+assert(a.N==20000000&&a.h==h);N=a.N;
+if kind=="n_study",assert(isequal(grid,a.grid81));truth=a.d81;else,assert(isequal(grid,a.grid201));truth=a.d201;end
+end
+
+function [q,shifts]=curves(model,d,count,grid,h,seed,substream,bridge)
+s=RandStream('Threefry',Seed=seed);s.Substream=substream;q=zeros(count,numel(grid));shifts=zeros(count,size(d.base,2));
+j=1:5;v=sin(j*pi/2)./(j*pi).^2;v=v/norm(v);
+for k=1:count
+    shifts(k,:)=rand(s,1,size(d.base,2));u=mod(d.base+shifts(k,:),1);u(u==0)=realmin;u(u==1)=1-eps/2;theta=norminv(u);
+    if model=="linear",y=theta*v.';
+    elseif model=="nonlinear",y=2+.12*sum(theta,2)+.25*tanh(theta(:,1).*theta(:,2))+.08*(theta(:,3).^2-1)+.06*sin(theta(:,4).*theta(:,5));
+    else,y=reshape(double(bridge.solve_plate(py.numpy.array(theta))),[],1);end
+    for first=1:2048:numel(y)
+        ix=first:min(first+2047,numel(y));H=exp(-.5*((grid-y(ix))/h).^2)/(sqrt(2*pi)*h);q(k,:)=q(k,:)+d.P(ix).'*H;
+    end
+end
+end
+
+function T=coverage(model,d,pool,grid,truth,B,out,repo)
+M=400;R=128;G=numel(grid);lower=zeros(M,3,G);upper=lower;
+for first=1:100:M
+    last=first+99;file=fullfile(out,sprintf('coverage_%04d_%04d.mat',first,last));
+    if isfile(file),a=load(file);
+    else
+        a=struct('first',first,'last',last,'lower',zeros(100,3,G),'upper',zeros(100,3,G),'indices',zeros(100,R,'uint32'));
+        for trial=first:last
+            s=RandStream('Threefry',Seed=20260923);s.Substream=key(d,1,R,trial);ix=randi(s,30000,R,1);
+            ci=tc_intervals_from_original(pool(ix,:),B,.05,key(d,2,R,trial),20260923);j=trial-first+1;
+            a.lower(j,:,:)=ci.lower;a.upper(j,:,:)=ci.upper;a.indices(j,:)=uint32(ix.');
+        end
+        atomic(file,a);
+    end
+    assert(a.first==first&&a.last==last);lower(first:last,:,:)=a.lower;upper(first:last,:,:)=a.upper;
+    progress(repo,out,model+" n="+d.n+" trials="+last,"internal_n_coverage",30000,30000,0);
+end
+[g,k,v]=moments(pool);c=coefficients(B,fullfile(repo,'tc_recalculation_20260922'));T=table();methods=["Student t","percentile bootstrap","bootstrap-t"];
+for m=1:3
+    lo=reshape(lower(:,m,:),M,G);hi=reshape(upper(:,m,:),M,G);hits=sum(lo<=truth&truth<=hi,1);
+    pred=.95+(c(m,1)+c(m,2)*k+c(m,3)*g.^2)/R;L=zeros(1,G);U=ones(1,G);
+    use=hits>0;L(use)=betaincinv(.025,hits(use),M-hits(use)+1);use=hits<M;U(use)=betaincinv(.975,hits(use)+1,M-hits(use));
+    row=table(repmat(model,G,1),repmat("rqmc",G,1),repmat(methods(m),G,1),repmat(d.n,G,1), ...
+        repmat(R,G,1),repmat(B,G,1),repmat(M,G,1),grid.',hits.',hits.'/M,L.',U.',pred.',truth.',sqrt(v.'/R),repmat(30000,G,1), ...
+        'VariableNames',{'model','scheme','method','n','R','B','M','y','hit_count','coverage','cp95_lower','cp95_upper','formula_prediction','truth','outer_mean_se','P'});
+    T=[T;row]; %#ok<AGROW>
+end
+writetable(T,fullfile(out,'coverage.csv'));
+end
+
+function rec=recommend(model,d,pool,B,code)
+[g,k,~]=moments(pool);density=mean(pool,1);core=density>=.05*max(density);G=max(abs(g(core)));K=max(abs(k(core)));
+c=coefficients(B,code);Lambda=abs(c(:,1))+abs(c(:,2))*K+abs(c(:,3))*G^2;R=max(16,ceil(Lambda/.01));
+rec=table(repmat(model,3,1),repmat(string(d.scheme),3,1),["Student t";"percentile bootstrap";"bootstrap-t"], ...
+    repmat(d.n,3,1),repmat(B,3,1),R,Lambda,repmat(G,3,1),repmat(K,3,1),repmat(30000,3,1), ...
+    'VariableNames',{'model','scheme','method','n','B','R_recommended','Lambda','Gamma','Kappa','P'});
+end
+
+function T=concrete(model,d,rec,grid,truth,h,B,out,bridge)
+T=table();methods=["Student t","percentile bootstrap","bootstrap-t"];G=numel(grid);
+for m=1:3
+    R=rec.R_recommended(m);file=fullfile(out,sprintf('recommended_method_%d_raw.mat',m));
+    if isfile(file),a=load(file);assert(a.R==R);
+    else
+        seed=key(d,5,R,m);[q,shifts]=curves(model,d,R,grid,h,20260922,seed,bridge);
+        ci=tc_intervals_from_original(q,B,.05,key(d,6,R,m));a=struct('R',R,'q',q,'shifts',shifts,'out',ci,'seed',seed);atomic(file,a);
+    end
+    ci=a.out;row=table(repmat(string(d.scheme),G,1),repmat(model,G,1),repmat(methods(m),G,1),repmat(d.n,G,1), ...
+        repmat(R,G,1),repmat(B,G,1),grid.',truth.',ci.mean.',ci.sd.',ci.lower(m,:).',ci.upper(m,:).', ...
+        'VariableNames',{'scheme','model','method','n','R','B','y','reference_density','sample_mean','sample_sd','ci_lower','ci_upper'});
+    T=[T;row]; %#ok<AGROW>
+end
+writetable(T,fullfile(out,'recommended_intervals.csv'));
+end
+
+function [g,k,v]=moments(q)
+N=size(q,1);dx=q-mean(q,1);m2=mean(dx.^2,1);m3=mean(dx.^3,1);m4=mean(dx.^4,1);
+v=N/(N-1)*m2;k3=N^2/((N-1)*(N-2))*m3;k4=N^2*((N+1)*m4-3*(N-1)*m2.^2)/((N-1)*(N-2)*(N-3));g=k3./v.^1.5;k=k4./v.^2;
+end
+function c=coefficients(B,code)
+t=readtable(fullfile(code,'raw_percentile_finiteB_coefficients.csv'),TextType='string',Delimiter=',');
+names=["t distribution","percentile bootstrap","bootstrap-t"];keys=["A0","A4","A33"];c=zeros(3,3);
+for m=1:3,for j=1:3,a=t(t.B==B&t.method==names(m)&t.coefficient==keys(j),:);assert(height(a)==1);c(m,j)=a.value;end,end
+end
+function k=key(d,stage,R,index)
+assert(index<10000&&R<2048&&d.n<32768);k=((((stage*1000+d.code)*32768+d.n)*2048+R)*10000+index)+1;assert(k<flintmax);
+end
+function atomic(file,payload)
+if isfile(file),a=load(file);assert(isequaln(a,payload));return;end
+temp=[char(file),'.writing.mat'];assert(~isfile(temp),'Inspect partial file: %s',temp);save(temp,'-struct','payload','-v7');a=load(temp);assert(isequaln(a,payload));[ok,msg]=movefile(temp,file);assert(ok,msg);
+end
+function progress(repo,out,job,phase,completed,target,elapsed)
+s=struct('phase',phase,'job',job,'completed',completed,'target',target,'retained',4096,'elapsed_seconds',elapsed,'updated_at',char(datetime('now','Format','yyyy-MM-dd HH:mm:ss')));
+writejson(fullfile(out,'progress.json'),s);
+s.complete=false;s.current_step=char(job+" "+completed+"/"+target);writejson(fullfile(repo,'pool_expansion_30000_20260926','paper_update','progress.json'),s);
+end
+function writejson(path,s)
+temp=[char(path),'.writing'];fid=fopen(temp,'w');assert(fid>=0);fwrite(fid,jsonencode(s));fclose(fid);jsondecode(fileread(temp));movefile(temp,path,'f');
+end

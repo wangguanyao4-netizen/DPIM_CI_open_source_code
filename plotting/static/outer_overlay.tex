@@ -1,0 +1,35 @@
+\documentclass[border=0pt]{standalone}
+\usepackage{fontspec}
+\setmainfont{Latin Modern Roman}
+\usepackage{amsmath,bm,graphicx,tikz}
+\begin{document}
+\begin{tikzpicture}[x=1bp,y=1bp]
+\tikzset{
+  textlabel/.style={anchor=base west,text=black,font=\fontsize{17bp}{20bp}\selectfont\itshape},
+  mathlabel/.style={anchor=base west,text=black,fill=white,fill opacity=.94,text opacity=1,
+                    inner sep=2.5bp,font=\fontsize{15bp}{18bp}\selectfont},
+  clearlabel/.style={anchor=base west,text=black,fill=white,fill opacity=.94,text opacity=1,
+                     inner sep=3bp,font=\fontsize{17bp}{20bp}\selectfont\itshape}
+}
+\node[anchor=south west,inner sep=0] at (0,0)
+  {\includegraphics[width=1180bp,height=650bp]{real_data_outer_sample_workflow_background.pdf}};
+\node[textlabel] at (80,585) {pdf};
+\node[textlabel] at (879,102) {$y$};
+\node[anchor=base west,text=black,font=\fontsize{16bp}{19bp}\selectfont] at (449.5000,95) {$y=y^*$};
+\node[clearlabel] at (205,515) {Independent density estimates};
+\node[clearlabel] at (655,515) {$R$ density estimates};
+\node[textlabel] at (940,585) {outer sample at $y^*$};
+\node[mathlabel] at (1032,483.9286) {$Q_1(y^*)$};
+\node[mathlabel] at (1032,456.9286) {$Q_2(y^*)$};
+\node[mathlabel] at (1032,385.1417) {$Q_r(y^*)$};
+\node[mathlabel] at (1032,302.6659) {$Q_s(y^*)$};
+\node[mathlabel] at (1032,228.4223) {$Q_{R-1}(y^*)$};
+\node[mathlabel] at (1032,201.4223) {$Q_R(y^*)$};
+\node[mathlabel,anchor=base east] at (996,348.6130) {$\overline{Q}_R(y^*)$};
+\node[anchor=base west,text=black,font=\fontsize{11bp}{14bp}\selectfont\itshape] at (865,22) {Student t};
+\node[anchor=base west,text=black,font=\fontsize{11bp}{14bp}\selectfont\itshape] at (942,22) {percentile bootstrap};
+\node[anchor=base west,text=black,font=\fontsize{11bp}{14bp}\selectfont\itshape] at (1075,22) {bootstrap t};
+\node[anchor=base west,text=black,font=\fontsize{16bp}{20bp}\selectfont] at (76,58)
+  {$Q_r(y)=\displaystyle\sum_{i=1}^{n}P_i^0K_h\!\left\{y-g(\bm{\theta}_{r,i})\right\}$};
+\end{tikzpicture}
+\end{document}

@@ -1,0 +1,2 @@
+# Preserve source bytes so provenance hashes agree across Windows and Linux.
+* -text

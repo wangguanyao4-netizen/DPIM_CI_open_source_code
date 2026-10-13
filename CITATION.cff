@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "Please cite the accompanying manuscript and this repository when using the code."
+type: software
+title: "DPIM probabilistic error estimation for stochastic mechanics"
+version: 1.0.0
+authors:
+  - family-names: Wang
+    given-names: Guanyao
+repository-code: "https://github.com/wangguanyao4-netizen/DPIM_CI_open_source_code"
+license: MIT

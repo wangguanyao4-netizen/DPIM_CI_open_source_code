@@ -1,0 +1,43 @@
+"""Static release checks only: no imports of experiment or plotting modules."""
+from pathlib import Path
+import ast
+import hashlib
+import json
+import re
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+MANIFEST = ROOT / 'provenance/release_manifest.json'
+
+
+def main():
+    records = json.loads(MANIFEST.read_text(encoding='utf-8'))['files']
+    checked_python = 0
+    excluded = {'.csv', '.mat', '.npz', '.npy', '.h5', '.hdf5', '.pdf', '.png', '.jpg', '.zip'}
+    for item in records:
+        path = (ROOT / item['path']).resolve()
+        assert path.is_relative_to(ROOT.resolve())
+        assert path.is_file(), item['path']
+        assert path.suffix.lower() not in excluded, item['path']
+        raw = path.read_bytes()
+        assert hashlib.sha256(raw).hexdigest() == item['sha256'], item['path']
+        if path.suffix == '.py':
+            ast.parse(raw.decode('utf-8-sig'), filename=item['path'])
+            checked_python += 1
+        if path.suffix in {'.py', '.m', '.md', '.json', '.csv', '.txt', '.toml', '.yml', '.tex', '.cff'}:
+            text = raw.decode('utf-8-sig')
+            if path != Path(__file__).resolve():
+                assert not re.search(r'[A-Za-z]:[/\\]+Users[/\\]|/home/[^/\s]+/|/Users/[^/\s]+/', text), item['path']
+            assert not re.search(r'gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|-----BEGIN (?:RSA |OPENSSH )?PRIVATE KEY-----', text), item['path']
+        if path.suffix == '.json':
+            json.loads(raw)
+    print(f'PASS: {len(records)} file hashes; {checked_python} Python syntax checks; no data or generated figures.')
+    print('No simulation, numerical test, or plotting job was executed.')
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except (AssertionError, ValueError, OSError) as error:
+        print(f'FAIL: {error}', file=sys.stderr)
+        raise SystemExit(1) from error

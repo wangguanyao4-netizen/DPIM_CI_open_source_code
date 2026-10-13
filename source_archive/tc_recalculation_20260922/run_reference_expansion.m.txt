@@ -1,0 +1,106 @@
+function run_reference_expansion()
+% Fixed nested MC budgets; never select references using coverage outcomes.
+code=fileparts(mfilename('fullpath'));addpath(code,fullfile(code,'plotting'));
+old=fullfile(code,'results','paper_scale_original_grid_20260922');
+raw=fullfile(code,'results','formal_20260922');
+root=fullfile(code,'results','reference_expansion_10x_20260923');
+if ~isfolder(root),mkdir(root);end
+maxNumCompThreads(2);setenv('OPENBLAS_NUM_THREADS','2');setenv('OMP_NUM_THREADS','2');
+if pyenv().Status=="NotLoaded"
+    pyenv('Version','<configure-local-path>','ExecutionMode','InProcess');
+end
+insert(py.sys.path,int32(0),code);bridge=py.importlib.import_module('tc_bridge');
+original=readtable(fullfile(old,'nested_M_pointwise_coverage.csv'),TextType='string',Delimiter=',');
+original=original(original.M==5000,:);allRows=table();summary=table();
+names=["linear","nonlinear","plate"];ns=[768,768,200];
+for im=1:3
+    model=names(im);folder=fullfile(root,model);if ~isfolder(folder),mkdir(folder);end
+    s=load(fullfile(old,"reference_"+model,'reference_coverage_grid.mat'));ref=s.ref;
+    grid=ref.y;h=ref.h;baseN=ref.N;budgets=baseN*[1,2,5,10];
+    total=zeros(size(grid));sq=total;count=0;
+    files=dir(fullfile(raw,"reference_"+model,'responses_*.mat'));
+    for f=files.'
+        s=load(fullfile(f.folder,f.name),'response');[a,b]=moments(s.response,grid,h);
+        total=total+a;sq=sq+b;count=count+numel(s.response);
+    end
+    assert(count==baseN);
+    assert(max(abs(total/count-ref.density))<1e-10*max(ref.density));
+    chunk=10000;if model=="plate",chunk=200;end
+    for N=budgets
+        for first=count+1:chunk:N
+            last=min(first+chunk-1,N);file=fullfile(folder,sprintf('responses_%09d_%09d.mat',first,last));
+            if isfile(file),s=load(file);response=s.response;
+            else
+                timer=tic;stream=RandStream('Threefry',Seed=2026092301);
+                stream.Substream=im*1000000+(first-baseN-1)/chunk+1;
+                theta=randn(stream,last-first+1,5+5*(model=="plate"));
+                if model=="linear"
+                    j=1:5;v=sin(j*pi/2)./(j*pi).^2;v=v/norm(v);response=theta*v.';
+                elseif model=="nonlinear"
+                    response=2+.12*sum(theta,2)+.25*tanh(theta(:,1).*theta(:,2)) ...
+                        +.08*(theta(:,3).^2-1)+.06*sin(theta(:,4).*theta(:,5));
+                else
+                    response=reshape(double(bridge.solve_plate(py.numpy.array(theta))),[],1);
+                end
+                seconds=toc(timer);tmp=[char(file),'.writing.mat'];
+                save(tmp,'response','first','last','seconds','-v7');movefile(tmp,file);
+            end
+            assert(numel(response)==last-first+1&&all(isfinite(response)));
+            [a,b]=moments(response,grid,h);total=total+a;sq=sq+b;count=last;
+            if mod(count,chunk*10)==0||count==N
+                fprintf('%s reference %d/%d\n',model,count,budgets(end));
+            end
+        end
+        density=total/N;se=sqrt(max(sq-total.^2/N,0)/(N*(N-1)));
+        file=fullfile(folder,sprintf('reference_N%d.mat',N));
+        if ~isfile(file),save(file,'grid','h','N','density','se','-v7');end
+        rows=original(original.model==model,:);rows.reference_N=repmat(N,height(rows),1);
+        rows.reference_multiplier=repmat(N/baseN,height(rows),1);
+        for R=unique(rows.R).'
+            hits=zeros(3,numel(grid));batches=dir(fullfile(old,model+"_rqmc_n"+ns(im), ...
+                sprintf('pool_stage11_R%d_M5000',R),'batch_*.mat'));
+            assert(numel(batches)==50);
+            for batch=batches.'
+                b=load(fullfile(batch.folder,batch.name),'lower','upper');
+                hits=hits+reshape(sum(b.lower<=reshape(density,1,1,[]) & ...
+                    b.upper>=reshape(density,1,1,[]),1),3,[]);
+            end
+            methods=["Student t","percentile bootstrap","bootstrap-t"];
+            for m=1:3
+                idx=find(rows.R==R&rows.method==methods(m));[~,order]=sort(rows.y(idx));idx=idx(order);
+                assert(max(abs(rows.y(idx).'-grid))<1e-14);
+                H=hits(m,:).';lo=zeros(size(H));hi=ones(size(H));
+                k=H>0;lo(k)=betaincinv(.025,H(k),5001-H(k));
+                k=H<5000;hi(k)=betaincinv(.975,H(k)+1,5000-H(k));
+                rows.hit_count(idx)=H;rows.coverage(idx)=H/5000;
+                rows.cp95_lower(idx)=lo;rows.cp95_upper(idx)=hi;
+                rows.truth(idx)=density.';rows.reference_se(idx)=se.';
+                item=table(model,methods(m),R,N,N/baseN,mean(H/5000), ...
+                    sqrt(mean((H/5000-rows.formula_prediction(idx)).^2)), ...
+                    median(se.'./rows.outer_mean_se(idx)), ...
+                    'VariableNames',{'model','method','R','reference_N','multiplier', ...
+                    'mean_coverage','rmse_vs_formula','median_reference_SE_over_interval_SE'});
+                summary=[summary;item]; %#ok<AGROW>
+            end
+        end
+        if N==baseN
+            baseline=original(original.model==model,:);
+            assert(isequal(rows.hit_count,baseline.hit_count));
+        end
+        allRows=[allRows;rows]; %#ok<AGROW>
+        writetable(allRows,fullfile(root,'reference_size_pointwise.csv'));
+        writetable(summary,fullfile(root,'reference_size_summary.csv'));
+    end
+end
+plot_reference_expansion();
+fprintf('REFERENCE EXPANSION COMPLETE: %s\n',root);
+end
+
+function [a,b]=moments(response,grid,h)
+a=zeros(size(grid));b=a;
+for k=1:2048:numel(response)
+    r=response(k:min(k+2047,numel(response)));
+    H=exp(-.5*((grid-r)/h).^2)/(sqrt(2*pi)*h);
+    a=a+sum(H,1);b=b+sum(H.^2,1);
+end
+end

@@ -1,0 +1,91 @@
+"""Exact periodic nearest-cell assignment and the archived plate FE solver."""
+import os
+os.environ.setdefault("OPENBLAS_NUM_THREADS", "2")
+os.environ.setdefault("OMP_NUM_THREADS", "2")
+from pathlib import Path
+import sys
+import time
+import numpy as np
+from scipy.spatial import cKDTree
+from threadpoolctl import threadpool_limits
+
+ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(ROOT / "vendor"))
+from dpim_plate.fem import build_plate_model
+from dpim_plate.random_field import generate_elastic_field
+
+LIMIT = threadpool_limits(limits=2)
+MODEL = None
+MODES = None
+AUDIT = None
+
+
+def assigned_probabilities(base, count, seed):
+    base = np.asarray(base, dtype=float)
+    tree = cKDTree(base, boxsize=1.0)
+    rng = np.random.default_rng(int(seed))
+    hits = np.zeros(len(base), dtype=np.int64)
+    for start in range(0, int(count), 2048):
+        aux = rng.random((min(2048, int(count)-start), base.shape[1]))
+        index = tree.query(aux, workers=1)[1]
+        hits += np.bincount(index, minlength=len(base))
+    return hits.astype(float) / int(count)
+
+
+def test_periodic_assignment():
+    rng = np.random.default_rng(211)
+    base, aux = rng.random((17, 5)), rng.random((79, 5))
+    indices = cKDTree(base, boxsize=1.).query(aux, workers=1)[1]
+    diff = np.abs(aux[:, None, :] - base[None, :, :])
+    brute = np.argmin(np.minimum(diff, 1-diff).__pow__(2).sum(axis=2), axis=1)
+    if not np.array_equal(indices, brute):
+        raise AssertionError("Periodic cell assignment differs from brute force")
+    return True
+
+
+def initialize_plate():
+    global MODEL, MODES, AUDIT
+    if MODEL is not None:
+        return
+    MODEL = build_plate_model()
+    _, MODES, field_audit = generate_elastic_field(
+        np.zeros((1, 10)), MODEL.nodes, seed=2026092207,
+        support_count=800, modes=10, corr_x=.8, corr_y=.8,
+        mean=2.184e11, std=2.184e10)
+    AUDIT = {"seed": 2026092207, "nodes": len(MODEL.nodes),
+             "elements": MODEL.nelem, "free_dofs": MODEL.n_free,
+             "retained_energy_ratio": field_audit.retained_energy_ratio,
+             "mean_response": float(MODEL.response_vector @ MODEL.mean_solution)}
+
+
+def solve_plate(theta, validate=False):
+    initialize_plate()
+    theta = np.asarray(theta, dtype=float)
+    element_modes = MODES[MODEL.quads].mean(axis=1)
+    # Stop, rather than silently truncating/resampling an invalid material.
+    if np.any(2.184e11 + 2.184e10*(element_modes @ theta.T) <= 0):
+        raise ValueError("Nonpositive sampled modulus: input law needs review")
+    responses, audit = MODEL.solve_theta_samples(
+        theta, MODES, elastic_mean=2.184e11, elastic_std=2.184e10,
+        direct_validation_samples=3 if bool(validate) else 0)
+    if audit.max_relative_residual > 1e-8:
+        raise ValueError("Plate residual check failed")
+    if bool(validate) and audit.direct_validation_max_relative_error > 1e-8:
+        raise ValueError("Plate direct/iterative parity failed")
+    return responses.reshape(-1, 1)
+
+
+def save_plate_model(path):
+    initialize_plate()
+    np.savez_compressed(str(path), nodal_modes=MODES, nodes=MODEL.nodes,
+                        quads=MODEL.quads, seed=np.array([2026092207]))
+    return str(AUDIT)
+
+
+def benchmark():
+    initialize_plate()
+    theta = np.random.default_rng(731).standard_normal((24, 10))
+    start = time.perf_counter()
+    response = solve_plate(theta, True)
+    return np.array([time.perf_counter()-start, len(response),
+                     float(response.min()), float(response.max())])

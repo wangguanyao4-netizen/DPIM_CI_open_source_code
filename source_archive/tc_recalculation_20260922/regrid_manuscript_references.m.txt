@@ -1,0 +1,43 @@
+function regrid_manuscript_references()
+% Re-evaluate existing MC responses; no new response solves or random draws.
+code=fileparts(mfilename('fullpath'));
+base=fullfile(code,'results','paper_scale_original_grid_20260922');
+raw=fullfile(code,'results','formal_20260922');
+expanded=fullfile(code,'results','reference_expansion_10x_20260923');
+out=fullfile(code,'results','manuscript_selected_20260923');
+if ~isfolder(out),mkdir(out);end
+maxNumCompThreads(2);
+for model=["linear","nonlinear"]
+    dest=fullfile(out,"reference_"+model);if ~isfolder(dest),mkdir(dest);end
+    target=fullfile(dest,'reference_grids.mat');
+    if isfile(target),fprintf('Already complete: %s\n',target);continue;end
+    a=load(fullfile(base,"reference_"+model,'reference.mat'));
+    b=load(fullfile(base,"reference_"+model,'reference_n_grid.mat'));
+    grid201=a.ref.y;grid81=b.ref.y;h=a.ref.h;
+    [grid,~,index]=unique([grid201,grid81]);
+    total=zeros(size(grid));sq=total;N=0;
+    files=[dir(fullfile(raw,"reference_"+model,'responses_*.mat')); ...
+        dir(fullfile(expanded,model,'responses_*.mat'))];
+    for f=files.'
+        s=load(fullfile(f.folder,f.name),'response');
+        for k=1:2048:numel(s.response)
+            v=s.response(k:min(k+2047,numel(s.response)));
+            H=exp(-.5*((grid-v(:))/h).^2)/(sqrt(2*pi)*h);
+            total=total+sum(H,1);sq=sq+sum(H.^2,1);
+        end
+        N=N+numel(s.response);
+        if mod(N,1000000)==0,fprintf('%s reference grids %d/20000000\n',model,N);end
+    end
+    assert(N==20000000);
+    density=total/N;se=sqrt(max(sq-total.^2/N,0)/(N*(N-1)));
+    d201=density(index(1:201));s201=se(index(1:201));
+    d81=density(index(202:end));s81=se(index(202:end));
+    assert(numel(d81)==81);
+    save(target,'grid201','grid81','d201','s201','d81','s81','N','h','-v7');
+    writetable(table(grid201(:),d201(:),s201(:),'VariableNames', ...
+        {'y','reference_density','reference_se'}),fullfile(dest,'reference_density.csv'));
+    writetable(table(grid81(:),d81(:),s81(:),'VariableNames', ...
+        {'y','reference_density','reference_se'}),fullfile(dest,'reference_n_density.csv'));
+end
+fprintf('MANUSCRIPT REFERENCE GRIDS COMPLETE\n');
+end

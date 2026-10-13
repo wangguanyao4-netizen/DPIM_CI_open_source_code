@@ -1,0 +1,169 @@
+function run_all_M30000()
+% Append trials without changing the archived prefixes or reference targets.
+root=fileparts(mfilename('fullpath'));repo=fileparts(root);
+code=fullfile(repo,'tc_recalculation_20260922');addpath(code);
+maxNumCompThreads(2);setenv('OMP_NUM_THREADS','2');setenv('OPENBLAS_NUM_THREADS','2');
+for model=["linear","nonlinear","plate"]
+    source=fullfile(repo,'pool_expansion_30000_20260926',model,'results');
+    a=load(fullfile(source,'pool_complete.mat'));cfg=a.cfg;
+    if model~="plate",q=a.pool(:,202:226);
+    else
+        [gap,idx]=min(abs(cfg.coverage_grid(:)-cfg.grid(:).'),[],2);
+        assert(max(gap)<1e-16);q=a.pool(:,idx);
+    end
+    clear a;assert(isequal(size(q),[30000,25])&&~cfg.centering&&cfg.M==5000);
+    out=fullfile(root,model+'_pool');if ~isfolder(out),mkdir(out);end
+    saveAtomic(fullfile(out,'configuration.mat'),struct('cfg',cfg,'target_M',30000));
+    for R=cfg.R
+        folder=fullfile(out,sprintf('R%d',R));if ~isfolder(folder),mkdir(folder);end
+        for trial=[20000]
+            first=100*floor((trial-1)/100)+1;last=first+99;
+            previous=fullfile(repo,'coverage_M20000_manuscript_20260927',model+'_pool');
+            if model=="nonlinear",previous=fullfile(repo,'nonlinear_M_sensitivity_20260927');end
+            a=load(fullfile(previous,sprintf('R%d',R),sprintf('batch_%05d_%05d.mat',first,last)));
+            ci=poolInterval(q,cfg,R,trial);j=trial-first+1;
+            assert(isequaln(reshape(a.lower(j,:,:),3,25),ci.lower));
+            assert(isequaln(reshape(a.upper(j,:,:),3,25),ci.upper));
+        end
+        fprintf('VERIFIED %s R=%d original first/last trials\n',model,R);
+        for first=20001:100:30000
+            last=first+99;file=fullfile(folder,sprintf('batch_%05d_%05d.mat',first,last));
+            if isfile(file),a=load(file);
+            else
+                timer=tic;a=struct('first',first,'last',last,'P',30000,'R',R, ...
+                    'lower',zeros(100,3,25),'upper',zeros(100,3,25), ...
+                    'zero',zeros(100,25),'ties',zeros(100,25));
+                for trial=first:last
+                    ci=poolInterval(q,cfg,R,trial);j=trial-first+1;
+                    a.lower(j,:,:)=ci.lower;a.upper(j,:,:)=ci.upper;
+                    a.zero(j,:)=ci.zero_bootstrap_variance;a.ties(j,:)=ci.bootstrap_mean_ties;
+                end
+                a.seconds=toc(timer);saveAtomic(file,a);
+            end
+            assert(a.first==first&&a.last==last&&a.R==R&&a.P==30000);
+            assert(~any(isnan(a.lower),'all')&&~any(isnan(a.upper),'all')&&all(a.lower<=a.upper,'all'));
+            if mod(last,1000)==0,fprintf('%s pool R=%d M=%d/30000\n',model,R,last);end
+        end
+    end
+end
+clear q;
+source=fullfile(code,'results','euler_target_pool_separation_20260923');
+s=load(fullfile(source,'config.mat'));config=s.config;assert(config.M==5000&&config.seed==2026092302);
+s=load(fullfile(code,'results','paper_scale_original_grid_20260922','linear_rqmc_n768','design.mat'),'design');d=s.design;
+grid=config.grid;h=config.h;Rlist=config.R;B=config.B;seed=config.seed;
+assert(d.n==768&&numel(grid)==25&&h==.08&&isequal(Rlist,[32,128]));
+j=1:5;weights=sin(j*pi/2)./(j*pi).^2;weights=weights/norm(weights);
+out=fullfile(root,'linear_fresh');if ~isfolder(out),mkdir(out);end
+saveAtomic(fullfile(out,'configuration.mat'),struct('config',config,'target_M',30000));
+for trial=[20000]
+    first=50*floor((trial-1)/50)+1;last=first+49;
+    a=load(fullfile(repo,'coverage_M20000_manuscript_20260927','linear_fresh',sprintf('batch_%05d_%05d.mat',first,last)));
+    q=freshCurves(d,grid,h,weights,seed,trial);
+    assert(isequal(q,a.qSaved(:,:,trial-first+1)));
+    for ir=1:2
+        ci=tc_intervals_from_original(q(1:Rlist(ir),:),B,.05,1000000+trial*2+ir,seed);
+        assert(isequaln(reshape(a.lower(trial-first+1,ir,:,:),3,25),ci.lower));
+        assert(isequaln(reshape(a.upper(trial-first+1,ir,:,:),3,25),ci.upper));
+    end
+end
+fprintf('VERIFIED fresh Euler exact original curves and intervals\n');wall=tic;
+for first=20001:50:30000
+    last=first+49;file=fullfile(out,sprintf('batch_%05d_%05d.mat',first,last));
+    if isfile(file),a=load(file);
+    else
+        timer=tic;a=struct('first',first,'last',last,'lower',zeros(50,2,3,25), ...
+            'upper',zeros(50,2,3,25),'qSaved',zeros(128,25,50), ...
+            'zero',zeros(50,2,25),'ties',zeros(50,2,25));
+        for trial=first:last
+            q=freshCurves(d,grid,h,weights,seed,trial);j=trial-first+1;a.qSaved(:,:,j)=q;
+            for ir=1:2
+                ci=tc_intervals_from_original(q(1:Rlist(ir),:),B,.05,1000000+trial*2+ir,seed);
+                a.lower(j,ir,:,:)=ci.lower;a.upper(j,ir,:,:)=ci.upper;
+                a.zero(j,ir,:)=ci.zero_bootstrap_variance;a.ties(j,ir,:)=ci.bootstrap_mean_ties;
+            end
+        end
+        a.seconds=toc(timer);saveAtomic(file,a);
+    end
+    assert(a.first==first&&a.last==last&&all(isfinite(a.qSaved),'all'));
+    assert(~any(isnan(a.lower),'all')&&~any(isnan(a.upper),'all')&&all(a.lower<=a.upper,'all'));
+    fprintf('Euler fresh trials %d/30000; batch %.2fs; elapsed %.1fs\n',last,a.seconds,toc(wall));
+end
+run_internal_M(root,repo,code);
+fprintf('ALL M30000 TRIALS COMPLETE\n');
+end
+
+function q=freshCurves(d,grid,h,weights,seed,trial)
+stream=RandStream('Threefry',Seed=seed);stream.Substream=trial;
+shifts=rand(stream,128,5);response=zeros(768,128);
+for dim=1:5
+    u=mod(d.base(:,dim)+shifts(:,dim).',1);u(u==0)=realmin;u(u==1)=1-eps/2;
+    response=response+weights(dim)*norminv(u);
+end
+H=exp(-.5*((grid-response(:))/h).^2)/(sqrt(2*pi)*h);
+q=reshape(sum(reshape(H,768,128,numel(grid)).*reshape(d.P,768,1,1),1),128,numel(grid));
+end
+
+function ci=poolInterval(q,cfg,R,trial)
+s=RandStream('Threefry',Seed=cfg.pool_draw_seed);s.Substream=trial;
+idx=floor(rand(s,128,1)*cfg.P)+1;
+ci=tc_intervals_from_original(q(idx(1:R),:),cfg.B,.05,R*10000+trial,cfg.bootstrap_seed);
+end
+
+function saveAtomic(file,a)
+if isfile(file),b=load(file);assert(isequaln(a,b));return;end
+tmp=[char(file),'.writing.mat'];assert(~isfile(tmp));save(tmp,'-struct','a','-v7');
+b=load(tmp);assert(isequaln(a,b));[ok,msg]=movefile(tmp,file);assert(ok,msg);
+end
+
+function run_internal_M(root,repo,code)
+base=fullfile(code,'results','paper_scale_original_grid_20260922','n_study');
+for model=["linear","nonlinear"]
+    for n=[192,384,768]
+        name=model+"_rqmc_n"+n;
+        old=fullfile(repo,'paper_refresh_30000_20260926','results','n_study',name);
+        a=load(fullfile(old,'pool_complete.mat'));q=a.pool;cfg=a.cfg;
+        a=load(fullfile(base,name,'design.mat'));d=a.design;
+        assert(isequal(size(q),[30000,81])&&cfg.B==399&&~cfg.centering);
+        out=fullfile(root,'n_study',name);if ~isfolder(out),mkdir(out);end
+        saveAtomic(fullfile(out,'configuration.mat'),struct('cfg',cfg,'target_M',30000));
+        for trial=[1,400]
+            first=100*floor((trial-1)/100)+1;last=first+99;
+            a=load(fullfile(old,sprintf('coverage_%04d_%04d.mat',first,last)));
+            [ci,ix]=internalInterval(q,d,trial);j=trial-first+1;
+            assert(isequaln(reshape(a.lower(j,:,:),3,81),ci.lower));
+            assert(isequaln(reshape(a.upper(j,:,:),3,81),ci.upper));
+            assert(isequal(a.indices(j,:),uint32(ix.')));
+        end
+        fprintf('VERIFIED n-study %s original trials\n',name);wall=tic;
+        for first=401:100:30000
+            last=first+99;file=fullfile(out,sprintf('coverage_%05d_%05d.mat',first,last));
+            if isfile(file),a=load(file);
+            else
+                t=tic;a=struct('first',first,'last',last,'lower',zeros(100,3,81), ...
+                    'upper',zeros(100,3,81),'indices',zeros(100,128,'uint32'));
+                for trial=first:last
+                    [ci,ix]=internalInterval(q,d,trial);j=trial-first+1;
+                    a.lower(j,:,:)=ci.lower;a.upper(j,:,:)=ci.upper;a.indices(j,:)=uint32(ix.');
+                end
+                a.seconds=toc(t);saveAtomic(file,a);
+            end
+            assert(a.first==first&&a.last==last&&all(a.lower<=a.upper,'all'));
+            if mod(last,1000)==0,fprintf('n-study %s M=%d/30000 elapsed=%.1fs\n',name,last,toc(wall));end
+        end
+    end
+end
+end
+
+function [ci,ix]=internalInterval(q,d,trial)
+% The historical substream key reserves four digits for the trial number.
+% A fresh seed block preserves that key and avoids collisions after trial 9999.
+block=floor((trial-1)/9999);index=mod(trial-1,9999)+1;seed=20260923+100000000*block;
+s=RandStream('Threefry',Seed=seed);s.Substream=internalKey(d,1,128,index);
+ix=randi(s,30000,128,1);
+ci=tc_intervals_from_original(q(ix,:),399,.05,internalKey(d,2,128,index),seed);
+end
+
+function k=internalKey(d,stage,R,index)
+assert(index<10000&&R<2048&&d.n<32768);
+k=((((stage*1000+d.code)*32768+d.n)*2048+R)*10000+index)+1;assert(k<flintmax);
+end
